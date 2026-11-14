@@ -1,0 +1,76 @@
+NAME
+Note Studio Pro
+
+SHORT DESCRIPTION
+Offline text and code editor with tabs, syntax highlighting, diff, live Markdown preview, JSON Schema/OpenAPI, and local drafts.
+
+DETAILED DESCRIPTION
+Note Studio Pro brings your notes, code and structured data into one full-tab workspace in Chrome. Open text files, work across tabs, compare versions, preview Markdown and turn JSON samples into schemas. The extension works offline after installation, with no account required.
+
+MULTIPLE DOCUMENTS, ONE WORKSPACE
+• Create, open, rename and duplicate documents in separate tabs.
+• Keep independent undo and redo history for each document during the session.
+• Drag and drop UTF-8 text files into the editor.
+• Save a copy to your device or export a workspace backup.
+• Restore local drafts when you return to the same Chrome profile.
+• Import a backup to add documents to your current workspace, including backups from earlier Notepad Workspace releases.
+
+AUTOMATIC LANGUAGE DETECTION
+• Detect the language from typed or pasted content and set syntax highlighting automatically.
+• Use syntax highlighting for 17 language modes, including JavaScript, TypeScript, JSON, SQL/SOQL, Python, HTML, XML, CSS, YAML and Apex with Java highlighting.
+• Choose a language manually whenever needed. Manual choices persist until you select Auto-detect again.
+• See an Auto badge beside the detected language in the status bar.
+• Detect the language independently in each diff pane.
+Detection runs locally. Short or ambiguous snippets may require a manual choice.
+
+DIFF CHECKER
+• Compare editable copies of open documents, pasted text or local UTF-8 files.
+• Review added and removed lines in a side-by-side view.
+• Enable Highlight matching text to highlight matching lines on both sides.
+• Keep additions and removals visible while matching highlights are enabled.
+• Jump to the previous or next change.
+• Ignore spaces and tabs for comparison, swap sides and synchronize scrolling.
+• Copy the complete text from either pane with its copy icon.
+• Export a unified .diff patch, including whitespace changes even when ignored in the view.
+Comparison copies leave source documents unchanged. Diff supports up to 5 MB and 100,000 lines per side; large repetitive regions may be grouped to keep processing bounded.
+
+DOUBLE-CLICK MATCH HIGHLIGHTING
+Double-click a word to highlight all exact, case-sensitive occurrences of the selected string in the current document. Highlights also appear in both linked split views and remain visible while scrolling. Click elsewhere, change the selection, edit, switch documents or press Escape to clear them. Highlighting does not change your text.
+
+FULL-TEXT COPY
+Copy the active document's complete text with the toolbar icon or Edit menu. Each diff pane also has its own copy-all icon. Copying works even when only part of the text is selected and preserves the document and selection.
+
+LIVE MARKDOWN PREVIEW
+Preview Markdown beside your source as you edit. The preview follows the active tab and supports headings, emphasis, links, nested lists, task lists, blockquotes, fenced code, tables and strikethrough. Heading links navigate within the preview. Use the toolbar eye icon, View menu or Ctrl+Alt+M (Cmd+Alt+M on Mac).
+Rendering works locally and offline. Raw HTML appears as text, unsafe link schemes are rejected and external images appear as links instead of loading automatically. Supported embedded PNG, JPEG, GIF and WebP data images can render inline. Markdown preview and linked split editing are alternate views.
+
+JSON TO JSON SCHEMA AND OPENAPI
+Generate schemas from an open JSON document, pasted JSON or a selected local file. Choose:
+• JSON Schema 2020-12, 2019-09, Draft 07, Draft 06 or Draft 04.
+• OpenAPI 3.2, 3.1 or 3.0.
+• Swagger / OpenAPI 2.0.
+
+Infer nested objects, arrays, mixed types, nulls and primitive roots. Configure common required fields, additional properties, format detection, enum restrictions, example annotations and multiple root samples. Copy the full result, download JSON or YAML, or open the generated output in a new tab. API targets can produce a standalone Schema Object or a starter document with reusable schemas.
+Review the inferred contract before using it. Samples cannot establish every future value or reveal API paths, servers or authentication. Swagger 2.0 uses x-nullable and generation notes for unsupported unions. Schema inputs are limited to 5 MB, 200,000 values and 64 nesting levels.
+
+EVERYDAY EDITING TOOLS
+• Find and replace with case-sensitive, whole-word and regular-expression options.
+• Use capture groups in replacements.
+• Validate, format and minify JSON; indent other code.
+• Sort lines, remove duplicates, change case and clean up whitespace.
+• Fold code, match brackets, complete words and bookmark lines.
+• Open two linked views of the same document.
+• Navigate with the document map, go-to-line command and bookmarks.
+• Choose LF or CRLF line endings.
+• Adjust font size and indentation; toggle word wrap and line numbers.
+• Choose light or dark appearance and focus mode.
+• Find commands in the command palette and use familiar keyboard shortcuts.
+
+LOCAL BY DESIGN
+Document contents are processed on your device. The extension does not upload your documents or include analytics or advertising. It requests no website, browsing-history, cookie or account permissions. Clicking its toolbar icon opens or focuses the editor in a Chrome tab; it does not replace your New Tab page.
+
+Save downloads a copy rather than overwriting an original file. Website and extension drafts use separate browser storage; use workspace export and import to move them. Clearing browser data or uninstalling the extension can remove local drafts, so keep downloaded files or exported backups.
+
+Supports UTF-8 text files up to 5 MB each and up to 100 documents per workspace. Requires Chrome 116 or later. Native Notepad++ plugins, executable macros, binary editing and filesystem-wide search are outside this version.
+
+Note Studio Pro is an independent editor inspired by Notepad++. It is not affiliated with the Notepad++ project.

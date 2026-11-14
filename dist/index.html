@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="note-studio-build" content="1.8.0-87caf1ff21d10b5c">
+  <meta name="theme-color" content="#f6f8fa">
+  <meta name="description" content="Your text and code, in one quiet workspace. Note Studio Pro: a private browser editor for text, code, JSON and Markdown.">
+  <title>Note Studio Pro · Browser workspace</title>
+  <link rel="icon" type="image/png" href="assets/icon32.png">
+  <link rel="stylesheet" href="vendor/editor.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="diff.css">
+  <link rel="stylesheet" href="schema.css">
+  <link rel="stylesheet" href="markdown.css">
+  <link rel="stylesheet" href="brand.css">
+  <!-- PWA_HEAD_START -->
+  <link rel="manifest" href="app.webmanifest">
+  <link rel="apple-touch-icon" href="assets/pwa-icon-180.png">
+  <link rel="stylesheet" href="pwa.css">
+  <!-- PWA_HEAD_END -->
+  <script defer src="vendor/editor.js"></script>
+  <script defer src="occurrence-highlight.js"></script>
+  <script defer src="diff-core.js"></script>
+  <script defer src="diff-checker.js"></script>
+  <script defer src="language-detection.js"></script>
+  <script defer src="schema-core.js"></script>
+  <script defer src="schema-ui.js"></script>
+  <script defer src="vendor/markdown-it.js"></script>
+  <script defer src="vendor/markdown-task-lists.js"></script>
+  <script defer src="markdown-core.js"></script>
+  <script defer src="markdown-preview.js"></script>
+  <script defer src="app.js"></script>
+  <!-- PWA_SCRIPT_START -->
+  <script defer src="pwa.js"></script>
+  <!-- PWA_SCRIPT_END -->
+</head>
+<body>
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h10l3 3v15H5V3h1Z"/><path d="M15 3v5h4M8 12h8M8 16h6"/></symbol>
+  <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5h6l2 3h10v12H3V7Z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 10V5h6l2 3h9v3M3 10h18l-3 9H3v-9Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M4 3h14l3 3v15H3V3h1Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 5 5 5-5 5M20 10H10a6 6 0 0 0 0 12"/></symbol>
+  <symbol id="i-wrap" viewBox="0 0 24 24"><path d="M3 6h18M3 11h14a4 4 0 1 1 0 8h-4m2-3-3 3 3 3M3 16h5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 4v16M12 8h5M12 12h5M12 16h3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 4 2 3 1 4 4 2 3-1 4-1 2-4-1-3-1-4-4-2-4 1Z"/><circle cx="11" cy="11.5" r="3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 5h13M4 10h10M4 15h6m7-4v10m-3-3 3 3 3-3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+  <symbol id="i-replace" viewBox="0 0 24 24"><path d="M4 6h13m-3-3 3 3-3 3M20 18H7m3-3-3 3 3 3M4 12h16"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M5.5 9h4M15 13h4m-2-2v4"/></symbol>
+  <symbol id="i-preview" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+</defs></svg>
+<div id="app">
+  <header class="titlebar">
+    <a class="brand" href="#" aria-label="About Note Studio Pro" data-action="about"><span class="brand-mark"><img src="assets/note-studio-pro-mark.png" alt="" width="38" height="38"></span><span class="brand-title">Note Studio <span class="brand-tier">PRO</span></span><span class="web-badge">WEB WORKSPACE</span></a>
+    <button class="command-trigger" data-action="palette"><svg><use href="#i-search"/></svg><span>Search commands…</span><kbd>Ctrl K</kbd></button>
+    <div class="title-actions"><!-- PWA_HEADER_START --><button class="pwa-status" id="pwa-status" type="button" aria-label="Offline availability" title="Offline availability"><span class="pwa-status-dot" aria-hidden="true"></span><span id="pwa-status-label" aria-live="polite">Preparing offline…</span></button><button class="install-app-button" id="pwa-install-button" type="button" aria-label="Install Note Studio Pro"><svg aria-hidden="true"><use href="#i-install"/></svg><span>Install app</span></button><!-- PWA_HEADER_END --><button class="icon-btn" data-action="shortcuts" title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><svg><use href="#i-keyboard"/></svg></button><button class="avatar" data-action="about" title="About Note Studio Pro" aria-label="About Note Studio Pro">NS</button></div>
+  </header>
+  <nav class="menubar" aria-label="Application menu"><div id="menus"></div><div class="menu-end"><svg><use href="#i-shield"/></svg><span>Your files stay in your browser</span></div></nav>
+  <div class="toolbar" role="toolbar" aria-label="Editor tools">
+    <div class="tool-group"><button class="tool-button" data-action="new" title="New document (Ctrl+N)"><svg><use href="#i-plus"/></svg><span>New</span></button><button class="tool-button" data-action="open" title="Open files (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Open</span></button><button class="tool-button" data-action="save" title="Save a file to your device (Ctrl+S)"><svg><use href="#i-save"/></svg><span>Save</span></button><button class="icon-btn" id="copy-all-button" data-action="copy-all" title="Copy all text to clipboard" aria-label="Copy all text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn" id="undo-button" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button><button class="icon-btn" id="redo-button" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button></div>
+    <div class="tool-group"><button class="tool-button" data-action="find" title="Find (Ctrl+F)"><svg><use href="#i-search"/></svg><span>Find</span></button><button class="tool-button" data-action="replace" title="Replace (Ctrl+H)"><svg><use href="#i-replace"/></svg><span>Replace</span></button><button class="tool-button" data-action="diff" title="Compare text and files (Ctrl+Alt+D)" aria-label="Diff checker"><svg><use href="#i-diff"/></svg><span>Diff</span></button></div>
+    <div class="tool-group"><button class="tool-button" data-action="format" title="Format JSON, or indent code (Ctrl+Shift+F)"><svg><use href="#i-code"/></svg><span>Format</span></button><button class="icon-btn" id="wrap-button" data-action="wrap" title="Toggle word wrap (Alt+Z)" aria-label="Word wrap" aria-pressed="false"><svg><use href="#i-wrap"/></svg></button></div>
+    <span class="toolbar-spacer"></span><span id="draft-state" class="draft-state"><svg><use href="#i-check"/></svg><span>Session saved</span></span>
+    <div class="tool-group end-tools"><button class="icon-btn" id="markdown-button" data-action="markdown" title="Markdown preview (Ctrl+Alt+M)" aria-label="Markdown preview" aria-pressed="false"><svg><use href="#i-preview"/></svg></button><button class="icon-btn" id="map-button" data-action="minimap" title="Toggle document map" aria-label="Document map" aria-pressed="true"><svg><use href="#i-map"/></svg></button><button class="icon-btn" id="split-button" data-action="split" title="Split editor" aria-label="Split editor" aria-pressed="false"><svg><use href="#i-split"/></svg></button><button class="icon-btn" data-action="settings" title="Editor settings" aria-label="Editor settings"><svg><use href="#i-settings"/></svg></button></div>
+  </div>
+  <div class="workspace">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-heading"><span>EXPLORER</span><div><button class="icon-btn small" data-action="new" aria-label="New file" title="New file"><svg><use href="#i-plus"/></svg></button><button class="icon-btn small" data-action="workspace-menu" aria-label="Workspace actions" title="Workspace actions"><svg><use href="#i-more"/></svg></button></div></div>
+      <div class="workspace-label"><span class="workspace-symbol">NS</span><div><strong>My workspace</strong><span>Personal · browser storage</span></div><svg><use href="#i-down"/></svg></div>
+      <div class="files-heading"><span>OPEN FILES <span id="file-count">3</span></span><button class="text-icon" data-action="open" title="Open a file" aria-label="Open a file"><svg><use href="#i-folder"/></svg></button></div>
+      <div class="file-list" id="file-list" role="list" aria-label="Open files"></div>
+      <button class="add-document" data-action="new"><svg><use href="#i-plus"/></svg> New document <kbd>Ctrl N</kbd></button>
+      <div class="quick-tools"><div class="section-label">QUICK TOOLS</div><button data-action="format-json"><span class="tool-glyph">{ }</span>Format JSON<span class="mini-tag">JSON</span></button><button data-action="schema"><svg><use href="#i-code"/></svg>Generate schema<span class="mini-tag">NEW</span></button><button data-action="sort"><svg><use href="#i-sort"/></svg>Sort lines A → Z</button><button data-action="dedupe"><svg><use href="#i-note"/></svg>Remove duplicate lines</button><button data-action="trim"><svg><use href="#i-code"/></svg>Trim trailing spaces</button></div>
+      <div class="sidebar-bottom"><div class="privacy-icon"><svg><use href="#i-shield"/></svg></div><strong>A little space to think.</strong><p>Your drafts are saved on this browser automatically. No uploads.</p><button data-action="shortcuts">Make yourself at home <span>↗</span></button></div>
+      <div class="sidebar-footer"><span class="status-dot"></span> All systems local <span>v1.8.0</span></div>
+    </aside>
+    <main class="editor-main">
+      <div class="tabbar"><div class="tabs" id="tabs" role="tablist" aria-label="Documents"></div><button class="new-tab" data-action="new" title="New tab" aria-label="New tab"><svg><use href="#i-plus"/></svg></button><button class="icon-btn tab-menu" data-action="workspace-menu" aria-label="Tab actions" title="Tab actions"><svg><use href="#i-more"/></svg></button></div>
+      <div class="breadcrumb"><div><button data-action="sidebar" title="Toggle explorer" aria-label="Toggle explorer"><svg><use href="#i-folder"/></svg></button><span>My workspace</span><svg class="crumb-chevron"><use href="#i-right"/></svg><span class="file-type tiny" id="crumb-type">JS</span><strong id="crumb-name">playground.js</strong></div><div><span class="editable-dot"></span><span id="readonly-label">Editable</span><span class="crumb-divider"></span><button data-action="focus" title="Toggle focus mode" aria-label="Focus mode"><svg><use href="#i-expand"/></svg></button></div></div>
+      <section class="search-panel" id="search-panel" hidden aria-label="Find and replace">
+        <div class="search-row"><svg><use href="#i-search"/></svg><label class="sr-only" for="find-input">Find text</label><input id="find-input" placeholder="Find in this document" autocomplete="off" spellcheck="false"><div class="search-options"><button id="case-option" aria-pressed="false" title="Match case" aria-label="Match case">Aa</button><button id="word-option" aria-pressed="false" title="Match whole word" aria-label="Match whole word">ab</button><button id="regex-option" aria-pressed="false" title="Regular expression" aria-label="Regular expression">.*</button></div><span id="match-count" role="status">No search</span><button class="icon-btn small" data-action="find-prev" title="Previous match" aria-label="Previous match"><svg><use href="#i-up"/></svg></button><button class="icon-btn small" data-action="find-next" title="Next match" aria-label="Next match"><svg><use href="#i-down"/></svg></button><button class="icon-btn small" data-action="close-search" title="Close search" aria-label="Close search"><svg><use href="#i-close"/></svg></button></div>
+        <div class="search-row replace-row" id="replace-row" hidden><svg><use href="#i-replace"/></svg><label class="sr-only" for="replace-input">Replace with</label><input id="replace-input" placeholder="Replace with… ($1 supported in regex mode)" autocomplete="off" spellcheck="false"><button class="secondary-btn" data-action="replace-one">Replace</button><button class="secondary-btn" data-action="replace-all">Replace all</button></div>
+        <div id="search-error" class="search-error" role="status" hidden></div>
+      </section>
+      <div class="editors-area" id="editors-area"><div class="editor-pane primary" id="primary-pane"><div id="editor"></div><aside class="minimap" id="minimap" aria-label="Document map"><div class="map-label">MAP</div><div id="map-track" class="map-track" role="slider" aria-label="Document scroll position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><pre id="map-content" aria-hidden="true"></pre><div id="map-viewport"></div></div></aside></div><div class="editor-pane secondary-pane" id="secondary-pane" hidden><div class="split-caption"><span>Linked view · same document</span><button class="icon-btn small" data-action="split" title="Close split view" aria-label="Close split view"><svg><use href="#i-close"/></svg></button></div><div id="secondary-editor"></div></div><section id="markdown-pane" class="markdown-pane" hidden aria-labelledby="markdown-title"><header class="markdown-pane-head"><svg aria-hidden="true"><use href="#i-preview"/></svg><div><strong id="markdown-title">Markdown preview</strong><small id="markdown-file"></small></div><span class="markdown-live">LIVE</span><button class="icon-btn small" data-action="markdown" title="Close Markdown preview" aria-label="Close Markdown preview"><svg><use href="#i-close"/></svg></button></header><article id="markdown-content" class="markdown-body" aria-label="Rendered Markdown" aria-busy="false" tabindex="0"></article><footer class="markdown-pane-footer" id="markdown-status" role="status" aria-live="polite">Live preview</footer></section></div>
+      <div class="editor-footnote" id="editor-footnote"><span><svg><use href="#i-bookmark"/></svg>Click the gutter to bookmark a line</span><span>Less setup. More flow.</span></div>
+    </main>
+  </div>
+  <footer class="statusbar"><button class="status-workspace" data-action="sidebar"><svg><use href="#i-folder"/></svg><span>My workspace</span></button><span class="status-separator"></span><span id="document-stats">0 lines · 0 characters</span><span class="status-spacer"></span><button id="cursor-position" data-action="goto" title="Go to line (Ctrl+G)">Ln 1, Col 1</button><span id="selection-stats" hidden></span><button id="indent-status" data-action="settings">Spaces: 2</button><button id="eol-status" data-action="eol">LF</button><span class="encoding">UTF-8</span><button id="language-status" data-action="language">JavaScript<svg><use href="#i-down"/></svg></button><button id="zoom-status" data-action="zoom-reset" title="Reset zoom">100%</button><span class="status-live" title="Browser storage"><span></span></span></footer>
+</div>
+<input type="file" id="file-input" multiple hidden>
+<input type="file" id="workspace-input" accept="application/json,.json" hidden>
+<div id="dropdown" class="dropdown" role="menu" hidden></div>
+<dialog id="modal"><div id="modal-content"></div></dialog>
+<dialog id="diff-dialog" class="diff-dialog" aria-labelledby="diff-title" aria-describedby="diff-description">
+  <header class="diff-head"><div class="diff-heading"><svg aria-hidden="true"><use href="#i-diff"/></svg><div><h2 id="diff-title">Diff checker</h2><p id="diff-description">Compare open tabs, local files, or pasted text. All processing stays in your browser.</p></div></div><div class="diff-top-actions"><button class="button" data-diff="swap" title="Swap original and modified">Swap sides</button><button class="button" data-diff="clear">Clear both</button><button class="icon-btn" data-diff="close" aria-label="Close diff checker" title="Close (Esc)"><svg><use href="#i-close"/></svg></button></div></header>
+  <div class="diff-controls"><label class="diff-option diff-match-option" title="Highlight lines that match in both panes under the current comparison settings"><input type="checkbox" id="diff-matching">Highlight matching text</label><label class="diff-option"><input type="checkbox" id="diff-whitespace">Ignore spaces &amp; tabs</label><label class="diff-option"><input type="checkbox" id="diff-sync" checked>Sync scrolling</label><div class="diff-navigation"><button class="button" id="diff-prev" data-diff="prev" title="Previous change (Alt+↑)" disabled><svg aria-hidden="true"><use href="#i-up"/></svg><span>Previous</span></button><span id="diff-counter" aria-live="polite">0 / 0</span><button class="button" id="diff-next" data-diff="next" title="Next change (Alt+↓)" disabled><span>Next</span><svg aria-hidden="true"><use href="#i-down"/></svg></button></div></div>
+  <div class="diff-panes">
+    <section class="diff-pane" data-diff-side="left" aria-label="Original comparison pane"><div class="diff-pane-head"><div class="diff-pane-title"><strong><span class="diff-side-mark" aria-hidden="true">−</span>ORIGINAL</strong><div class="diff-pane-actions"><button class="icon-btn small diff-copy-btn" data-diff="copy-left" title="Copy all original text" aria-label="Copy all original text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button><button class="secondary-btn" data-diff="open-left" aria-label="Open original file"><svg aria-hidden="true"><use href="#i-open"/></svg><span>Open file</span></button></div></div><label class="sr-only" for="diff-source-left">Original source</label><select class="diff-source" id="diff-source-left"><option value="">Custom / pasted text</option></select><span id="diff-name-left" class="diff-source-note">Paste or type below</span></div><div class="diff-editor" id="diff-editor-left"></div></section>
+    <section class="diff-pane" data-diff-side="right" aria-label="Modified comparison pane"><div class="diff-pane-head"><div class="diff-pane-title"><strong><span class="diff-side-mark" aria-hidden="true">+</span>MODIFIED</strong><div class="diff-pane-actions"><button class="icon-btn small diff-copy-btn" data-diff="copy-right" title="Copy all modified text" aria-label="Copy all modified text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button><button class="secondary-btn" data-diff="open-right" aria-label="Open modified file"><svg aria-hidden="true"><use href="#i-open"/></svg><span>Open file</span></button></div></div><label class="sr-only" for="diff-source-right">Modified source</label><select class="diff-source" id="diff-source-right"><option value="">Custom / pasted text</option></select><span id="diff-name-right" class="diff-source-note">Paste or type below</span></div><div class="diff-editor" id="diff-editor-right"></div></section>
+  </div>
+  <footer class="diff-footer"><div class="diff-results"><div class="diff-summary" id="diff-summary" role="status" aria-live="polite">Choose text to compare</div><span class="diff-note" id="diff-note">Editable copies · comparison text stays here until this page reloads</span></div><div class="diff-footer-actions"><button class="button" id="diff-export" data-diff="export" title="Download a unified patch with all exact text changes, including whitespace" disabled>Export .diff</button><button class="button primary diff-compare-btn" data-diff="compare" title="Compare (Ctrl+Enter)"><svg aria-hidden="true"><use href="#i-diff"/></svg>Compare</button></div></footer>
+  <input type="file" id="diff-file-left" hidden><input type="file" id="diff-file-right" hidden>
+</dialog>
+<dialog id="schema-dialog" class="schema-dialog" aria-labelledby="schema-title" aria-describedby="schema-description">
+  <header class="schema-header"><div><svg class="schema-mark" aria-hidden="true"><use href="#i-code"/></svg><div><h2 id="schema-title">JSON → Schema</h2><p id="schema-description">Create JSON Schema or OpenAPI schemas from JSON examples. Everything runs locally.</p></div></div><button class="icon-btn" data-schema="close" aria-label="Close schema generator" title="Close (Esc)"><svg><use href="#i-close"/></svg></button></header>
+  <div class="schema-options">
+    <div class="schema-option-grid">
+      <label class="schema-field" for="schema-target">Schema standard<select id="schema-target"></select></label>
+      <label class="schema-field" for="schema-scope">Output scope<select id="schema-scope"><option value="schema">Schema only</option><option value="document">OpenAPI document + component</option></select></label>
+      <label class="schema-field" for="schema-format">Output format<select id="schema-format"><option value="json">JSON</option><option value="yaml">YAML</option></select></label>
+      <label class="schema-field" for="schema-name">Schema / component name<input id="schema-name" value="Payload" maxlength="80" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <div class="schema-switches">
+      <label title="Require a field only when it appears in every object sample at that location"><input id="schema-required" type="checkbox" checked>Require common fields</label>
+      <label title="Allow object properties beyond those in the supplied examples"><input id="schema-additional" type="checkbox" checked>Allow additional properties</label>
+      <label title="Recognise dates, date-times, email addresses, UUIDs and URIs when all observed values match"><input id="schema-formats" type="checkbox" checked>Detect formats</label>
+      <label title="Restrict scalar values to the observed examples, up to 20 unique values"><input id="schema-enums" type="checkbox">Infer enums</label>
+      <label title="Include up to three observed scalar values as example annotations"><input id="schema-examples" type="checkbox">Include examples</label>
+      <label title="Treat each item in the top-level JSON array as a separate example of the same schema"><input id="schema-multiple" type="checkbox">Root array = multiple samples</label>
+    </div>
+  </div>
+  <div id="schema-error" class="schema-error" role="alert" hidden></div>
+  <div class="schema-workspace">
+    <section class="schema-pane" aria-label="JSON source"><div class="schema-pane-head"><strong>JSON INPUT</strong><label class="sr-only" for="schema-source">JSON source</label><select id="schema-source"><option value="">Custom / pasted JSON</option></select><button class="secondary-btn" data-schema="file" title="Open a local JSON file up to 5 MB"><svg aria-hidden="true"><use href="#i-open"/></svg>Open file</button><button class="secondary-btn" data-schema="example">Example</button></div><div id="schema-input" class="schema-editor"></div></section>
+    <section class="schema-pane output" aria-label="Generated schema"><div class="schema-pane-head"><strong id="schema-output-title">GENERATED SCHEMA</strong><span class="schema-spacer"></span><button class="icon-btn small" id="schema-copy" data-schema="copy" aria-label="Copy complete schema" title="Copy complete schema" disabled><svg aria-hidden="true"><use href="#i-copy"/></svg></button><button class="button" id="schema-download" data-schema="download" title="Download complete schema" disabled>Download</button><button class="button" id="schema-tab" data-schema="tab" title="Open generated schema in a new editor tab" disabled>Open in tab</button></div><div id="schema-output" class="schema-editor"></div></section>
+  </div>
+  <ul id="schema-notes" class="schema-notes" aria-label="Generation notes"></ul>
+  <footer class="schema-footer"><div><div id="schema-status" class="schema-status" role="status" aria-live="polite">Choose or paste JSON to begin.</div><span class="schema-caution">Inferred from examples. Review required fields, formats and API details before use.</span></div><button class="button primary schema-generate" data-schema="generate" title="Generate (Ctrl+Enter)"><svg aria-hidden="true"><use href="#i-code"/></svg>Generate</button></footer>
+  <input id="schema-file" type="file" accept="application/json,.json,.txt" hidden>
+</dialog>
+<!-- PWA_DIALOG_START -->
+<dialog class="pwa-dialog" id="pwa-dialog" aria-labelledby="pwa-title">
+  <div class="pwa-dialog-head"><img src="assets/pwa-icon-192.png" alt="" width="52" height="52"><div><h2 id="pwa-title">Install Note Studio Pro</h2><p>Your workspace, one click away.</p></div><button class="icon-btn small" id="pwa-close" type="button" aria-label="Close install information"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div>
+  <div class="pwa-dialog-body"><p>Open Note Studio Pro in its own window from your Dock or Start menu. No store account or yearly subscription is required.</p><div class="pwa-offline-card"><strong id="pwa-offline-title">Preparing offline editing</strong><p id="pwa-offline-detail" role="status" aria-live="polite">Keep this page open while the editor is saved for offline use.</p></div><p id="pwa-install-instructions"></p><div class="pwa-update-card" id="pwa-update-card" hidden><strong>An update is ready</strong><p id="pwa-update-detail">Apply it when you are ready. Your workspace drafts will be saved before the app refreshes.</p></div><p class="pwa-storage-note">Drafts stay in this browser profile. Export a workspace backup to keep an extra copy. Clearing site data can remove drafts and offline files.</p></div>
+  <div class="pwa-dialog-actions"><button class="button" id="pwa-retry" type="button" hidden>Retry offline setup</button><button class="button" id="pwa-apply-update" type="button" hidden>Update and reopen</button><button class="button primary" id="pwa-install-confirm" type="button" hidden>Install Note Studio Pro</button><button class="button" id="pwa-done" type="button">Done</button></div>
+</dialog>
+<!-- PWA_DIALOG_END -->
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<div class="drop-overlay" id="drop-overlay" hidden><div><svg><use href="#i-open"/></svg><strong>Drop your files here</strong><span>Make a little room for your ideas.</span></div></div>
+</body>
+</html>

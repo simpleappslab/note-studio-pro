@@ -1,0 +1,15 @@
+import {readFile,readdir} from 'node:fs/promises';
+import {spawn} from 'node:child_process';
+const pkg=JSON.parse(await readFile('package.json','utf8'));
+const tag=process.env.NOTE_STUDIO_RELEASE_TAG;
+if(tag!=='v'+pkg.version)throw Error('The release tag must match package.json.');
+const repository=process.env.GH_REPO;
+if(!repository||!/^[-.\w]+\/[-.\w]+$/.test(repository))throw Error('A valid GitHub repository is required.');
+const commit=process.env.NOTE_STUDIO_RELEASE_COMMIT;
+if(!commit||!/^[0-9a-f]{40}$/.test(commit))throw Error('A full source commit SHA is required.');
+const files=(await readdir('release')).filter(name=>name.endsWith('.zip')||name==='SHA256SUMS.txt').map(name=>'release/'+name);
+if(files.length!==3)throw Error('Expected both ZIPs and their checksums.');
+const args=['release','create',tag,...files,'--repo',repository,'--target',commit,'--title','Note Studio Pro '+pkg.version,'--notes-file','RELEASE-NOTES.md'];
+const child=spawn('gh',args,{stdio:'inherit'});
+child.on('error',error=>{throw error;});
+child.on('close',code=>{process.exitCode=code||0;});

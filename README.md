@@ -4,7 +4,7 @@ Note Studio Pro is a browser-local text and code editor inspired by Notepad++. A
 
 ## Installable app and offline use
 
-Open [Note Studio Pro](https://notepad-workbench-ramakant.ramsmahobia.chatgpt.site) and choose **Install app**. Chrome and Edge can open it in a separate app window; Safari on Mac offers **File → Add to Dock**.
+Open [Note Studio Pro](https://simpleappslab.github.io/note-studio-pro/) and choose **Install app**. Chrome and Edge can open it in a separate app window; Safari on Mac offers **File → Add to Dock**.
 
 Wait for **Available offline** before disconnecting. Offline support includes the editor, all language modes, diff, Markdown preview and schema generation. Drafts stay local. Use workspace export/import when moving between web addresses.
 

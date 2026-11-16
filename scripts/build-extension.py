@@ -11,7 +11,7 @@ output = args.output.resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 build = output.parent / 'extension-build' / 'note-studio-pro'
 build.mkdir(parents=True, exist_ok=True)
-for name in ['app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css']:
+for name in ['transpose-core.js', 'transpose.js', 'transpose.css', 'json-preview-core.js', 'json-preview.js', 'json-preview.css', 'app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css']:
     shutil.copy2(source / name, build / name)
 shutil.copytree(source / 'vendor', build / 'vendor', dirs_exist_ok=True)
 shutil.copytree(source / 'assets', build / 'assets', dirs_exist_ok=True)

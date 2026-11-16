@@ -48,3 +48,33 @@ const started=performance.now();const big=check(large,large.replace('line 25000\
 assert.equal(big.chunks.length,1);assert.equal(big.added,1);assert.equal(big.removed,1);
 const bounded=check('same\n'.repeat(3000),'other\n'.repeat(3000));assert.equal(bounded.simplified,true);
 console.log(JSON.stringify({syntheticCases:examples.length+800,patchRoundTrips:examples.length-1,largeLines:50000,largeMilliseconds:Math.round(performance.now()-started),boundedFallback:true}));
+
+// Merge in either direction, recomputing after each change as the UI does.
+const {mergeEdit}=require('../dist/diff-core.js');
+let mergeCases=0;
+for(const [original,modified] of examples){
+  for(const side of ['left','right']){
+    let left=original,right=modified,steps=0;
+    while(left!==right){
+      const chunks=compare(left,right).chunks;
+      assert.ok(chunks.length);
+      const chunk=chunks[steps%chunks.length];
+      const edit=mergeEdit(left,right,chunk,side);
+      const before=side==='left'?left:right;
+      const after=before.slice(0,edit.from)+edit.text+before.slice(edit.to);
+      assert.notEqual(before,after);
+      assert.ok(after.startsWith(before.slice(0,edit.from)));
+      assert.ok(after.endsWith(before.slice(edit.to)));
+      if(side==='left')left=after;else right=after;
+      assert.ok(++steps<30,'Merge must converge');
+    }
+    assert.equal(side==='left'?left:right,side==='left'?modified:original);
+    mergeCases++;
+  }
+}
+const ignoredLeft='a = 1;\nold\nkeep\n', ignoredRight='a=1;\nnew\nkeep\n';
+const ignoredChunk=compare(ignoredLeft,ignoredRight,true).chunks[0];
+const ignoredEdit=mergeEdit(ignoredLeft,ignoredRight,ignoredChunk,'right');
+assert.equal(ignoredRight.slice(0,ignoredEdit.from)+ignoredEdit.text+ignoredRight.slice(ignoredEdit.to),'a=1;\nold\nkeep\n');
+assert.throws(()=>mergeEdit('','',{},'invalid'));
+console.log(JSON.stringify({mergeCases,mergeWhitespacePreserved:true}));

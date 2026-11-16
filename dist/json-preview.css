@@ -1,0 +1,21 @@
+.json-preview-dialog{width:min(1100px,96vw);max-width:96vw;height:85dvh;overflow:hidden}
+.json-preview-dialog[open]{display:flex;flex-direction:column}
+.json-preview-head,.json-preview-controls{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.json-preview-head{justify-content:space-between}.json-preview-head h2{margin:0 0 5px;font-size:18px}
+.json-preview-head p,.json-preview-status{margin:0;font-size:11px;color:var(--muted)}
+.json-preview-controls{padding:10px 20px;background:var(--surface)}
+.json-preview-controls [aria-pressed=true]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.json-preview-body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.json-preview-tree{overflow:auto;padding:18px;flex:1;font:12px/1.8 ui-monospace,monospace}
+.json-tree-children{padding-left:22px;border-left:1px solid var(--border);margin-left:5px}
+.json-tree-label{padding:3px 5px;overflow-wrap:anywhere;white-space:pre-wrap}
+summary.json-tree-label{cursor:pointer}.json-tree-label:hover{background:var(--surface)}
+.json-tree-label:focus-visible{outline:2px solid var(--accent)}
+.json-tree-key{color:var(--text);font-weight:600}.json-tree-value{color:var(--muted)}
+.json-type-string{color:var(--accent)}.json-type-number{color:#526fc0}.json-type-boolean,.json-type-null{color:#ac617a}
+body[data-dark] .json-type-number{color:#9eb9ff}body[data-dark] .json-type-boolean,body[data-dark] .json-type-null{color:#eba5be}
+.json-tree-more{margin:6px}.json-preview-code{height:100%;min-height:0}.json-preview-code .CodeMirror{height:100%}
+.json-preview-error{padding:14px 20px;color:#b14b40;white-space:pre-wrap;overflow-wrap:anywhere}
+body[data-dark] .json-preview-error{color:#ffb4a9}
+.json-preview-status{padding:12px 20px;border-top:1px solid var(--border);line-height:1.5}
+@media(max-width:520px){.json-preview-head,.json-preview-controls{padding:12px}.json-preview-tree{padding:10px}.json-tree-children{padding-left:12px}.json-preview-controls{gap:6px}.json-preview-controls .button{padding:7px 9px}}

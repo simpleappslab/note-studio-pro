@@ -10,8 +10,8 @@
       result = null; current = -1;
       for (const widget of widgets) widget.clear(); widgets = [];
       $('diff-summary').textContent = message; $('diff-counter').textContent = '0 / 0';
-      for (const id of ['diff-prev','diff-next','diff-export']) $(id).disabled = true;
-      for (const pane of Object.values(panes)) pane.editor.refresh();
+      for (const id of ['diff-prev','diff-next','diff-export','diff-merge-left','diff-merge-right']) $(id).disabled = true;
+      for (const pane of Object.values(panes)) { pane.editor.clearGutter('diff-merge-gutter'); pane.editor.refresh(); }
     }
     function changedChunk(side, line) {
       if (!result) return -1;
@@ -47,7 +47,7 @@
       for (const side of ['left','right']) {
         const label = side === 'left' ? 'Original text' : 'Modified text';
         const ed = CodeMirror($('diff-editor-' + side), {
-          value:'', mode:null, lineNumbers:true, lineWrapping:false, viewportMargin:12,
+          value:'', mode:null, lineNumbers:true, gutters:['CodeMirror-linenumbers','diff-merge-gutter'], lineWrapping:false, viewportMargin:12,
           screenReaderLabel:label, dragDrop:false, indentUnit:2, tabSize:2,
           lineNumberFormatter:n => (changedChunk(side, n - 1) >= 0 ? (side === 'left' ? '− ' : '+ ') : '  ') + n,
           extraKeys:{'Alt-Down':() => navigate(1),'Alt-Up':() => navigate(-1),'Ctrl-Enter':compareNow,'Cmd-Enter':compareNow}
@@ -137,11 +137,27 @@
         const badge = document.createElement('span'); badge.className = 'diff-stat-' + name; badge.textContent = `${sign}${number.toLocaleString()} ${name}`; $('diff-summary').append(badge);
       }
       $('diff-note').textContent = value.simplified ? 'Large or repetitive sections are grouped. All changed text is included.' : 'Editable copies · comparison text stays here until this page reloads';
-      for (const id of ['diff-prev','diff-next']) $(id).disabled = !count;
+      for (const id of ['diff-prev','diff-next','diff-merge-left','diff-merge-right']) $(id).disabled = !count;
       // Export always includes exact text changes, even when the view ignores whitespace.
       $('diff-export').disabled = texts().left === texts().right;
       $('diff-counter').textContent = count ? `1 / ${count}` : '0 / 0';
       for (const pane of Object.values(panes)) pane.editor.operation(() => pane.editor.refresh());
+      // Toolbar arrows remain available for large comparisons without thousands of DOM controls.
+      if (count <= 1000) value.chunks.forEach((chunk, index) => {
+        for (const side of ['left','right']) {
+          const ed = panes[side].editor, button = document.createElement('button');
+          const target = side === 'left' ? 'right' : 'left';
+          button.type = 'button'; button.className = 'diff-merge-arrow';
+          button.textContent = target === 'right' ? '→' : '←';
+          button.title = 'Copy change ' + (index + 1) + ' from ' + side + ' to ' + target;
+          button.setAttribute('aria-label', button.title);
+          button.addEventListener('click', event => {
+            event.preventDefault(); event.stopPropagation();
+            if (result === value) mergeChunk(target, index);
+          });
+          ed.setGutterMarker(Math.min(ed.lastLine(), chunk[side + 'Start']), 'diff-merge-gutter', button);
+        }
+      });
       if (count <= 1000) for (const chunk of value.chunks) {
         const leftSize = chunk.leftEnd - chunk.leftStart, rightSize = chunk.rightEnd - chunk.rightStart;
         if (leftSize === rightSize) continue;
@@ -162,6 +178,22 @@
       }
       requestAnimationFrame(() => { scrolling = false; });
       $('diff-counter').textContent = `${current + 1} / ${result.chunks.length}`;
+    }
+    function mergeChunk(targetSide, index = current) {
+      if (!result || !dialog.open || !result.chunks[index]) return;
+      const text = texts(), edit = NotepadDiff.mergeEdit(text.left, text.right, result.chunks[index], targetSide);
+      const ed = panes[targetSide].editor;
+      const mergedLength = ed.getValue().length - (edit.to - edit.from) + edit.text.length;
+      if (mergedLength > maxSize) { notify('Merged text would exceed the 5 MB comparison limit.', true); return; }
+      const remainingLines=ed.lineCount()-(ed.getRange(ed.posFromIndex(edit.from),ed.posFromIndex(edit.to)).match(/\n/g)||[]).length;
+      if(remainingLines+(edit.text.match(/\n/g)||[]).length>100000){notify('Merged text would exceed 100,000 lines.',true);return;}
+      ed.getDoc().changeGeneration(true);
+      ed.replaceRange(edit.text, ed.posFromIndex(edit.from), ed.posFromIndex(edit.to), 'diff-merge');
+      ed.getDoc().changeGeneration(true);
+      ed.focus();
+      // change invalidates every old arrow before another merge can run.
+      compareNow();
+      notify('Change copied to the ' + targetSide + ' comparison pane. Undo to restore it.');
     }
     function exportPatch() {
       if (!result) return;
@@ -207,6 +239,8 @@
       else if (action === 'prev') navigate(-1);
       else if (action === 'next') navigate(1);
       else if (action === 'export') exportPatch();
+      else if (action === 'merge-left') mergeChunk('left');
+      else if (action === 'merge-right') mergeChunk('right');
       else if (action.startsWith('copy-')) copyAll(action.slice(5),button);
       else if (action.startsWith('open-')) $('diff-file-' + action.slice(5)).click();
       else if (action === 'swap') {

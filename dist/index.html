@@ -2,8 +2,10 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
+  <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="note-studio-build" content="1.8.0-87caf1ff21d10b5c">
+  <meta name="note-studio-build" content="1.9.0-338cc0945e6af8b5">
   <meta name="theme-color" content="#f6f8fa">
   <meta name="description" content="Your text and code, in one quiet workspace. Note Studio Pro: a private browser editor for text, code, JSON and Markdown.">
   <title>Note Studio Pro · Browser workspace</title>
@@ -11,6 +13,8 @@
   <link rel="stylesheet" href="vendor/editor.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="diff.css">
+  <link rel="stylesheet" href="json-preview.css">
+  <link rel="stylesheet" href="transpose.css">
   <link rel="stylesheet" href="schema.css">
   <link rel="stylesheet" href="markdown.css">
   <link rel="stylesheet" href="brand.css">
@@ -21,6 +25,10 @@
   <!-- PWA_HEAD_END -->
   <script defer src="vendor/editor.js"></script>
   <script defer src="occurrence-highlight.js"></script>
+  <script defer src="json-preview-core.js"></script>
+  <script defer src="json-preview.js"></script>
+  <script defer src="transpose-core.js"></script>
+  <script defer src="transpose.js"></script>
   <script defer src="diff-core.js"></script>
   <script defer src="diff-checker.js"></script>
   <script defer src="language-detection.js"></script>
@@ -90,7 +98,7 @@
       <div class="files-heading"><span>OPEN FILES <span id="file-count">3</span></span><button class="text-icon" data-action="open" title="Open a file" aria-label="Open a file"><svg><use href="#i-folder"/></svg></button></div>
       <div class="file-list" id="file-list" role="list" aria-label="Open files"></div>
       <button class="add-document" data-action="new"><svg><use href="#i-plus"/></svg> New document <kbd>Ctrl N</kbd></button>
-      <div class="quick-tools"><div class="section-label">QUICK TOOLS</div><button data-action="format-json"><span class="tool-glyph">{ }</span>Format JSON<span class="mini-tag">JSON</span></button><button data-action="schema"><svg><use href="#i-code"/></svg>Generate schema<span class="mini-tag">NEW</span></button><button data-action="sort"><svg><use href="#i-sort"/></svg>Sort lines A → Z</button><button data-action="dedupe"><svg><use href="#i-note"/></svg>Remove duplicate lines</button><button data-action="trim"><svg><use href="#i-code"/></svg>Trim trailing spaces</button></div>
+      <div class="quick-tools"><div class="section-label">QUICK TOOLS</div><button data-action="format-json"><span class="tool-glyph">{ }</span>Format JSON<span class="mini-tag">JSON</span></button><button data-action="stringify-json" title="Encode selected text or the entire document as a quoted JSON string"><span class="tool-glyph">{ }</span>Stringify JSON</button><button data-action="destringify-json" title="Decode one layer of a quoted JSON string in the selection or entire document"><span class="tool-glyph">{ }</span>Destringify JSON</button><button data-action="transpose"><span class="tool-glyph">⇄</span>Data transpose</button><button data-action="json-preview"><span class="tool-glyph">{ }</span>JSON preview &amp; tree</button><button data-action="schema"><svg><use href="#i-code"/></svg>Generate schema<span class="mini-tag">NEW</span></button><button data-action="sort"><svg><use href="#i-sort"/></svg>Sort lines A → Z</button><button data-action="dedupe"><svg><use href="#i-note"/></svg>Remove duplicate lines</button><button data-action="trim"><svg><use href="#i-code"/></svg>Trim trailing spaces</button></div>
       <div class="sidebar-bottom"><div class="privacy-icon"><svg><use href="#i-shield"/></svg></div><strong>A little space to think.</strong><p>Your drafts are saved on this browser automatically. No uploads.</p><button data-action="shortcuts">Make yourself at home <span>↗</span></button></div>
       <div class="sidebar-footer"><span class="status-dot"></span> All systems local <span>v1.8.0</span></div>
     </aside>
@@ -112,9 +120,24 @@
 <input type="file" id="workspace-input" accept="application/json,.json" hidden>
 <div id="dropdown" class="dropdown" role="menu" hidden></div>
 <dialog id="modal"><div id="modal-content"></div></dialog>
+<dialog id="transpose-dialog" class="transpose-dialog" aria-labelledby="transpose-title">
+  <header class="transpose-head"><div><h2 id="transpose-title">Data transpose</h2><p>Swap rows and columns. CSV, Excel-style tabs, or JSON arrays.</p></div><button class="button" id="transpose-close">Close</button></header>
+  <div class="transpose-controls"><label>Input<select id="transpose-format"><option value="auto">Auto-detect</option><option value="csv">CSV</option><option value="tsv">Tab-separated (Excel)</option><option value="json">JSON array</option></select></label><label>Output<select id="transpose-target"><option value="same">Same as input</option><option value="csv">CSV</option><option value="tsv">Tab-separated (Excel)</option><option value="json">JSON array</option></select></label><button class="button primary" id="transpose-run">Transpose ⇄</button></div>
+  <div class="transpose-error" id="transpose-error" role="alert" hidden></div>
+  <div class="transpose-editors"><label>INPUT<textarea id="transpose-input" spellcheck="false" placeholder="Paste data here"></textarea></label><label>TRANSPOSED OUTPUT<textarea id="transpose-output" readonly spellcheck="false"></textarea></label></div>
+  <div class="transpose-table-wrap"><table id="transpose-table" class="transpose-table"></table></div>
+  <footer class="transpose-footer"><span id="transpose-status" role="status" aria-live="polite"></span><button class="button" id="transpose-copy" disabled>Copy output</button><button class="button" id="transpose-tab" disabled>Open in new tab</button></footer>
+</dialog>
+<dialog id="json-preview-dialog" class="json-preview-dialog" aria-labelledby="json-preview-title">
+  <header class="json-preview-head"><div><h2 id="json-preview-title">JSON preview &amp; tree</h2><p id="json-preview-source"></p></div><button class="button" id="json-preview-close" aria-label="Close JSON preview">Close</button></header>
+  <div class="json-preview-controls"><button class="button" id="json-view-tree" aria-pressed="true">Tree</button><button class="button" id="json-view-code" aria-pressed="false">Preview</button><button class="button" id="json-collapse">Collapse all</button><button class="button" id="json-preview-refresh">Refresh</button><button class="button" id="json-preview-copy" disabled>Copy JSON</button></div>
+  <div id="json-preview-error" class="json-preview-error" role="alert" hidden></div>
+  <div class="json-preview-body"><div id="json-preview-tree" class="json-preview-tree" aria-label="JSON tree"></div><div id="json-preview-code" class="json-preview-code" hidden></div></div>
+  <footer id="json-preview-status" class="json-preview-status" role="status" aria-live="polite"></footer>
+</dialog>
 <dialog id="diff-dialog" class="diff-dialog" aria-labelledby="diff-title" aria-describedby="diff-description">
   <header class="diff-head"><div class="diff-heading"><svg aria-hidden="true"><use href="#i-diff"/></svg><div><h2 id="diff-title">Diff checker</h2><p id="diff-description">Compare open tabs, local files, or pasted text. All processing stays in your browser.</p></div></div><div class="diff-top-actions"><button class="button" data-diff="swap" title="Swap original and modified">Swap sides</button><button class="button" data-diff="clear">Clear both</button><button class="icon-btn" data-diff="close" aria-label="Close diff checker" title="Close (Esc)"><svg><use href="#i-close"/></svg></button></div></header>
-  <div class="diff-controls"><label class="diff-option diff-match-option" title="Highlight lines that match in both panes under the current comparison settings"><input type="checkbox" id="diff-matching">Highlight matching text</label><label class="diff-option"><input type="checkbox" id="diff-whitespace">Ignore spaces &amp; tabs</label><label class="diff-option"><input type="checkbox" id="diff-sync" checked>Sync scrolling</label><div class="diff-navigation"><button class="button" id="diff-prev" data-diff="prev" title="Previous change (Alt+↑)" disabled><svg aria-hidden="true"><use href="#i-up"/></svg><span>Previous</span></button><span id="diff-counter" aria-live="polite">0 / 0</span><button class="button" id="diff-next" data-diff="next" title="Next change (Alt+↓)" disabled><span>Next</span><svg aria-hidden="true"><use href="#i-down"/></svg></button></div></div>
+  <div class="diff-controls"><label class="diff-option diff-match-option" title="Highlight lines that match in both panes under the current comparison settings"><input type="checkbox" id="diff-matching">Highlight matching text</label><label class="diff-option"><input type="checkbox" id="diff-whitespace">Ignore spaces &amp; tabs</label><label class="diff-option"><input type="checkbox" id="diff-sync" checked>Sync scrolling</label><div class="diff-merge-actions" role="group" aria-label="Merge current change"><button class="button" id="diff-merge-left" data-diff="merge-left" title="Copy current change from right to left" disabled>← Copy to left</button><button class="button" id="diff-merge-right" data-diff="merge-right" title="Copy current change from left to right" disabled>Copy to right →</button></div><div class="diff-navigation"><button class="button" id="diff-prev" data-diff="prev" title="Previous change (Alt+↑)" disabled><svg aria-hidden="true"><use href="#i-up"/></svg><span>Previous</span></button><span id="diff-counter" aria-live="polite">0 / 0</span><button class="button" id="diff-next" data-diff="next" title="Next change (Alt+↓)" disabled><span>Next</span><svg aria-hidden="true"><use href="#i-down"/></svg></button></div></div>
   <div class="diff-panes">
     <section class="diff-pane" data-diff-side="left" aria-label="Original comparison pane"><div class="diff-pane-head"><div class="diff-pane-title"><strong><span class="diff-side-mark" aria-hidden="true">−</span>ORIGINAL</strong><div class="diff-pane-actions"><button class="icon-btn small diff-copy-btn" data-diff="copy-left" title="Copy all original text" aria-label="Copy all original text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button><button class="secondary-btn" data-diff="open-left" aria-label="Open original file"><svg aria-hidden="true"><use href="#i-open"/></svg><span>Open file</span></button></div></div><label class="sr-only" for="diff-source-left">Original source</label><select class="diff-source" id="diff-source-left"><option value="">Custom / pasted text</option></select><span id="diff-name-left" class="diff-source-note">Paste or type below</span></div><div class="diff-editor" id="diff-editor-left"></div></section>
     <section class="diff-pane" data-diff-side="right" aria-label="Modified comparison pane"><div class="diff-pane-head"><div class="diff-pane-title"><strong><span class="diff-side-mark" aria-hidden="true">+</span>MODIFIED</strong><div class="diff-pane-actions"><button class="icon-btn small diff-copy-btn" data-diff="copy-right" title="Copy all modified text" aria-label="Copy all modified text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button><button class="secondary-btn" data-diff="open-right" aria-label="Open modified file"><svg aria-hidden="true"><use href="#i-open"/></svg><span>Open file</span></button></div></div><label class="sr-only" for="diff-source-right">Modified source</label><select class="diff-source" id="diff-source-right"><option value="">Custom / pasted text</option></select><span id="diff-name-right" class="diff-source-note">Paste or type below</span></div><div class="diff-editor" id="diff-editor-right"></div></section>

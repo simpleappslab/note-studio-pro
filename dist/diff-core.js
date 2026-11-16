@@ -109,7 +109,20 @@
     }
     return out;
   }
-  const api = {compare, patch};
+  // Return an exact character-range edit using the comparison's newline-preserving tokens.
+  function mergeEdit(original, modified, chunk, targetSide) {
+    if (targetSide !== 'left' && targetSide !== 'right') throw new Error('Invalid merge direction');
+    const left = lines(original.replace(/\r\n?/g, '\n')), right = lines(modified.replace(/\r\n?/g, '\n'));
+    const sourceSide = targetSide === 'left' ? 'right' : 'left';
+    const target = targetSide === 'left' ? left : right, source = targetSide === 'left' ? right : left;
+    const start = chunk[targetSide + 'Start'], end = chunk[targetSide + 'End'];
+    return {
+      from: target.slice(0, start).join('').length,
+      to: target.slice(0, end).join('').length,
+      text: source.slice(chunk[sourceSide + 'Start'], chunk[sourceSide + 'End']).join('')
+    };
+  }
+  const api = {compare, patch, mergeEdit};
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.NotepadDiff = api;
 })(typeof self === 'object' ? self : globalThis);

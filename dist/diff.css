@@ -5,3 +5,11 @@
 
 /* Matching text has its own colour, alongside additions and removals. */
 .diff-editor .CodeMirror pre.diff-line-match{background:#edf3fc;border-left:3px solid #8badd8}body[data-dark] .diff-editor .CodeMirror pre.diff-line-match{background:#29384e;border-left-color:#88aee0}.diff-pane-actions{display:flex;align-items:center;gap:6px}.diff-pane-title .diff-copy-btn{width:27px;height:25px;border:1px solid var(--border);background:var(--bg);color:var(--muted)}.diff-pane-title .diff-copy-btn:hover{color:var(--accent);background:var(--accent-soft)}.diff-pane-title .diff-copy-btn svg{height:14px;width:14px}.diff-match-option:has(input:checked){color:#5276a8}body[data-dark] .diff-match-option:has(input:checked){color:#a2c4f2}@media(max-width:520px){.diff-pane-actions{gap:4px}.diff-pane-title{gap:6px}.diff-controls{gap:8px 12px}.diff-navigation{margin-left:0}.diff-controls .diff-option{font-size:9px}}
+
+/* Directional merge controls for the current change and individual chunks. */
+.diff-merge-actions{display:flex;gap:6px;flex-wrap:wrap}
+.diff-merge-actions .button{font-size:11px;padding:6px 9px}
+.diff-merge-gutter{width:30px}
+.diff-merge-arrow{display:block;width:28px;height:24px;padding:0;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--accent);font:600 18px/20px sans-serif;cursor:pointer}
+.diff-merge-arrow:hover{background:var(--accent-soft)}
+.diff-merge-arrow:focus-visible{outline:2px solid var(--accent);outline-offset:1px}

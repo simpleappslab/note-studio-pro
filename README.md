@@ -10,6 +10,8 @@ Wait for **Available offline** before disconnecting. Offline support includes th
 
 Version 1.8.0 adds branded install guidance, offline readiness, content-checked caching and draft-preserving updates. Read **PWA-DISTRIBUTION.md** for release and hosting instructions. GitHub-ready release archives are produced by **npm run package:web**.
 
+Version 1.9.0 adds JSON stringify/destringify, bidirectional diff merges, JSON preview/tree and data transpose, with security hardening.
+
 ## Run
 
 Serve `dist/` with any static HTTP server. All editor assets are included; no CDN is required. `node scripts/vendor.mjs` regenerates the vendored editor assets after `npm install`.
@@ -40,7 +42,31 @@ The status bar shows the language with an Auto badge. Choosing a language manual
 
 Open **Diff** on the toolbar, **Tools → Diff checker**, or press **Ctrl+Alt+D** (Cmd+Alt+D on Mac). Compare editable copies of open tabs, local UTF-8 files, or pasted text. Added and removed lines are highlighted, gaps align the two versions, and Previous/Next jumps between changes. Optional spaces/tabs ignoring and synchronized scrolling are available. Enable **Highlight matching text** to highlight matching lines in blue on both sides; additions and removals retain their colours. Each pane has a copy-all icon that copies its entire text. The main toolbar and Edit menu also offer **Copy all text** for the active document. Copying preserves the current selection and does not change the text. Export .diff downloads an exact unified patch, including whitespace changes even if hidden in the view. Source tabs are unchanged; comparison copies are kept until reload.
 
+Use the **→** arrow beside a change in the left pane to copy that change to the right, or **←** in the right pane to copy it to the left. **Copy to left / Copy to right** in the toolbar applies to the current change selected with Previous/Next. Merging replaces only that change, including insertions and deletions, and immediately refreshes the comparison. Undo in the destination pane restores the previous text. Merges affect comparison copies only; use Copy all to take the merged result back to a document. With Ignore spaces & tabs enabled, hidden whitespace-only differences are left alone. For more than 1,000 changes, use the toolbar arrows.
+
 Comparison supports up to 5 MB and 100,000 lines per side. A bundled Web Worker handles the comparison. Large repetitive regions may be grouped to bound memory and processing. All changed text is retained in the result and exported patch.
+
+## JSON stringify and destringify
+
+Choose **Stringify JSON** or **Destringify JSON** from Quick Tools, the Tools menu, or the command palette (Ctrl+K / Cmd+K). The action transforms the selection in the focused editor pane, or the entire document if nothing is selected. Undo restores the original text.
+
+Stringify encodes the exact text as a quoted JSON string, escaping quotes, backslashes, tabs and newlines. For example, `{"name":"Note"}` becomes `"{\"name\":\"Note\"}"`. It preserves formatting and large numeric literals because it does not parse the text first. Destringify decodes exactly one layer of a valid quoted JSON string; it restores the original text without reformatting. Malformed input and non-string JSON values show an error without changing the document. Both actions respect read-only mode and run locally, including offline.
+
+## Data transpose
+
+Open **Data transpose** from Quick Tools, Tools, or the command palette. It loads the selected text, or the active document when nothing is selected. Edit or paste input, select formats and click **Transpose** to swap rows and columns. Copy the complete result or open it in a new tab; the original document stays unchanged.
+
+Supports CSV, Excel-style tab-separated text, JSON arrays of arrays, and JSON arrays of objects with scalar values. Object keys become a header row before transposition; keys from all objects are included in first-seen order. JSON output is always an array of arrays and preserves exact numeric tokens and scalar types. CSV/TSV cells stay strings when converted to JSON. Nested JSON cell values and duplicate object keys are rejected.
+
+CSV/TSV output prefixes formula-like cells (including leading whitespace before =, +, -, or @) with an apostrophe to reduce spreadsheet formula injection risk. This changes those output cells; JSON output retains exact values. Review untrusted data before opening it in other applications.
+
+Quoted separators, escaped quotes, multiline cells, empty cells and CRLF records are supported. Uneven rows are padded with empty strings for delimited input or null for JSON input. A final line ending terminates the last record. Auto-detect recognises JSON arrays and tabs in the first record; choose the format explicitly for ambiguous text. The preview table shows the first 20 output rows and 12 columns, while Copy and Open include all data. Limits: 5 MB input, 100,000 rectangular cells and 10 MB output; JSON also uses the JSON preview parser limits. Processing works locally and offline.
+
+## JSON preview & tree
+
+Choose **JSON preview & tree** in Quick Tools, Tools, or the command palette. **Tree** displays expandable objects and arrays, property names, types and item counts. **Preview** shows formatted, read-only JSON with syntax highlighting; **Copy JSON** copies the complete formatted result. Collapse all resets the tree. Each opening reads the active document; Refresh reloads the snapshot.
+
+Source text is unchanged. Invalid JSON shows an error. Numbers retain their exact spelling and precision; duplicate keys retain their order. Processing stays local and works offline. Limits: 5 MB input, 50,000 values, 128 nesting levels and 8 MB formatted output. Tree branches load 100 children at a time, with up to 5,000 displayed values; the formatted preview and copy contain the complete result.
 
 ## JSON to Schema
 

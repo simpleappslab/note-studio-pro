@@ -47,22 +47,65 @@
       rendered=0;$('json-preview-tree').replaceChildren();
       if(data)$('json-preview-tree').append(row(data.tree,'','',true));
     }
-    function view(tree){
-      $('json-preview-tree').hidden=!tree;$('json-preview-code').hidden=tree;
-      $('json-view-tree').setAttribute('aria-pressed',String(tree));
-      $('json-view-code').setAttribute('aria-pressed',String(!tree));
-      $('json-collapse').disabled=!data||!tree;
-      if(!tree)requestAnimationFrame(()=>editor?.refresh());
+    function renderGrid(){
+      const host=$('json-preview-grid');host.replaceChildren();
+      if(!data)return;
+      function table(node){
+        const items=node.type==='array'?node.children:[{key:'0',node}];
+        const records=items.length>0&&items.every(x=>x.node.type==='object');
+        const keys=records?[...new Set(items.flatMap(x=>x.node.children.map(c=>c.key)))]:['Value'];
+        const columns=keys.slice(0,100);
+        const note=document.createElement('p');
+        note.textContent=items.length+' rows · '+keys.length+' columns. Showing up to 100 rows and 100 columns per page.';
+        host.append(note);
+        let page=0;
+        const table=document.createElement('table');table.setAttribute('aria-label','JSON grid');
+        const head=table.createTHead().insertRow();
+        for(const key of ['#',...columns]){const th=document.createElement('th');th.scope='col';th.textContent=key;head.append(th);}
+        const body=table.createTBody();host.append(table);
+        const controls=document.createElement('div'),prev=document.createElement('button'),next=document.createElement('button'),label=document.createElement('span');
+        prev.textContent='Previous';next.textContent='Next';prev.className=next.className='button';
+        controls.append(prev,label,next);host.append(controls);
+        function paint(){
+          body.replaceChildren();
+          for(const item of items.slice(page*100,(page+1)*100)){
+            const tr=body.insertRow();tr.insertCell().textContent=item.key;
+            for(const key of columns){
+              const cell=tr.insertCell();
+              const values=records?item.node.children.filter(c=>c.key===key).map(c=>c.node):[item.node];
+              for(const value of values){
+                if(value.children){
+                  const button=document.createElement('button');button.className='button';button.textContent=value.type+' ('+value.children.length+') →';
+                  button.addEventListener('click',()=>{host.replaceChildren();const back=document.createElement('button');back.className='button';back.textContent='Back to root';back.addEventListener('click',renderGrid);host.append(back);tableView(value);});cell.append(button);
+                }else{const span=document.createElement('div');span.textContent=value.raw;cell.append(span);}
+              }
+            }
+          }
+          prev.disabled=page===0;next.disabled=(page+1)*100>=items.length;
+          label.textContent=' Page '+(page+1)+' of '+Math.max(1,Math.ceil(items.length/100))+' ';
+        }
+        prev.addEventListener('click',()=>{page--;paint();});next.addEventListener('click',()=>{page++;paint();});paint();
+      }
+      function tableView(node){table(node);}
+      tableView(data.tree);
+    }
+    function view(mode){
+      for(const name of ['tree','code','grid']){
+        $('json-preview-'+name).hidden=name!==mode;
+        $('json-view-'+name).setAttribute('aria-pressed',String(name===mode));
+      }
+      $('json-collapse').disabled=!data||mode!=='tree';
+      if(mode==='code')requestAnimationFrame(()=>editor?.refresh());
     }
     function refresh(){
-      data=null;
+      data=null;$('json-preview-grid').replaceChildren();
       $('json-preview-error').hidden=true;$('json-preview-error').textContent='';
       $('json-preview-tree').replaceChildren();editor.setValue('');
       $('json-preview-copy').disabled=true;$('json-collapse').disabled=true;
       const file=getActiveFile();$('json-preview-source').textContent=file.name+' · read-only snapshot';
       try{
         data=NotepadJSONPreview.parse(file.content);
-        editor.setValue(data.formatted);renderTree();
+        editor.setValue(data.formatted);renderTree();renderGrid();
         $('json-preview-copy').disabled=false;
         $('json-collapse').disabled=$('json-preview-tree').hidden;
         status(data.count.toLocaleString()+' values · source document is unchanged');
@@ -76,10 +119,11 @@
       opener=document.activeElement;
       if(!dialog.open)dialog.showModal();
       if(!editor)editor=CodeMirror($('json-preview-code'),{value:'',mode:{name:'javascript',json:true},readOnly:true,lineNumbers:true,lineWrapping:true,viewportMargin:10,screenReaderLabel:'Formatted JSON preview'});
-      refresh();view(true);
+      refresh();view('tree');
     }
-    $('json-view-tree').addEventListener('click',()=>view(true));
-    $('json-view-code').addEventListener('click',()=>view(false));
+    $('json-view-tree').addEventListener('click',()=>view('tree'));
+    $('json-view-code').addEventListener('click',()=>view('code'));
+    $('json-view-grid').addEventListener('click',()=>view('grid'));
     $('json-collapse').addEventListener('click',()=>{
       renderTree();const root=$('json-preview-tree').querySelector('details');if(root)root.open=false;
       if(data)status(data.count.toLocaleString()+' values · source document is unchanged');

@@ -19,3 +19,5 @@ body[data-dark] .json-type-number{color:#9eb9ff}body[data-dark] .json-type-boole
 body[data-dark] .json-preview-error{color:#ffb4a9}
 .json-preview-status{padding:12px 20px;border-top:1px solid var(--border);line-height:1.5}
 @media(max-width:520px){.json-preview-head,.json-preview-controls{padding:12px}.json-preview-tree{padding:10px}.json-tree-children{padding-left:12px}.json-preview-controls{gap:6px}.json-preview-controls .button{padding:7px 9px}}
+
+.json-preview-grid{overflow:auto;flex:1;padding:10px;font:12px/1.5 ui-monospace,monospace}.json-preview-grid table{border-collapse:collapse;width:100%}.json-preview-grid th,.json-preview-grid td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top;max-width:400px;overflow-wrap:anywhere}.json-preview-grid th{position:sticky;top:0;background:var(--surface)}.json-preview-grid tr:nth-child(even){background:var(--surface)}.json-preview-grid>div{padding:8px 0}.json-preview-grid[hidden]{display:none}

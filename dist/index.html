@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
   <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="note-studio-build" content="1.9.0-338cc0945e6af8b5">
+  <meta name="note-studio-build" content="1.9.0-ba998b2b37fcd53c">
   <meta name="theme-color" content="#f6f8fa">
   <meta name="description" content="Your text and code, in one quiet workspace. Note Studio Pro: a private browser editor for text, code, JSON and Markdown.">
   <title>Note Studio Pro · Browser workspace</title>
@@ -130,9 +130,9 @@
 </dialog>
 <dialog id="json-preview-dialog" class="json-preview-dialog" aria-labelledby="json-preview-title">
   <header class="json-preview-head"><div><h2 id="json-preview-title">JSON preview &amp; tree</h2><p id="json-preview-source"></p></div><button class="button" id="json-preview-close" aria-label="Close JSON preview">Close</button></header>
-  <div class="json-preview-controls"><button class="button" id="json-view-tree" aria-pressed="true">Tree</button><button class="button" id="json-view-code" aria-pressed="false">Preview</button><button class="button" id="json-collapse">Collapse all</button><button class="button" id="json-preview-refresh">Refresh</button><button class="button" id="json-preview-copy" disabled>Copy JSON</button></div>
+  <div class="json-preview-controls"><button class="button" id="json-view-tree" aria-pressed="true">Tree</button><button class="button" id="json-view-code" aria-pressed="false">Preview</button><button class="button" id="json-view-grid" aria-pressed="false">Grid</button><button class="button" id="json-collapse">Collapse all</button><button class="button" id="json-preview-refresh">Refresh</button><button class="button" id="json-preview-copy" disabled>Copy JSON</button></div>
   <div id="json-preview-error" class="json-preview-error" role="alert" hidden></div>
-  <div class="json-preview-body"><div id="json-preview-tree" class="json-preview-tree" aria-label="JSON tree"></div><div id="json-preview-code" class="json-preview-code" hidden></div></div>
+  <div class="json-preview-body"><div id="json-preview-tree" class="json-preview-tree" aria-label="JSON tree"></div><div id="json-preview-grid" class="json-preview-grid" hidden></div><div id="json-preview-code" class="json-preview-code" hidden></div></div>
   <footer id="json-preview-status" class="json-preview-status" role="status" aria-live="polite"></footer>
 </dialog>
 <dialog id="diff-dialog" class="diff-dialog" aria-labelledby="diff-title" aria-describedby="diff-description">

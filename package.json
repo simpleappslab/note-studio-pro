@@ -5,7 +5,7 @@
   "description": "A private browser text and code editing workspace",
   "scripts": {
     "check": "node --check dist/transpose-core.js && node --check dist/transpose.js && node --check dist/json-preview-core.js && node --check dist/json-preview.js && node --check dist/app.js && node --check dist/diff-core.js && node --check dist/diff-checker.js && node --check dist/diff-worker.js && node --check dist/language-detection.js && node --check dist/schema-core.js && node --check dist/schema-ui.js && node --check dist/schema-worker.js && node --check dist/occurrence-highlight.js && node --check dist/markdown-core.js && node --check dist/markdown-preview.js && node --check dist/markdown-worker.js && node --check dist/pwa.js && node --check dist/sw.js",
-    "test": "node scripts/check-language.cjs && node scripts/check-diff.cjs && node scripts/check-schema.cjs && node scripts/check-markdown.cjs && node --test scripts/check-security.cjs scripts/check-transpose.cjs scripts/check-json-preview.cjs scripts/check-pwa.cjs scripts/check-json-string.cjs",
+    "test": "node scripts/check-language.cjs && node scripts/check-diff.cjs && node scripts/check-schema.cjs && node scripts/check-markdown.cjs && node --test scripts/check-json-inline.cjs scripts/check-security.cjs scripts/check-transpose.cjs scripts/check-json-preview.cjs scripts/check-pwa.cjs scripts/check-json-string.cjs",
     "build:pwa": "node scripts/build-pwa.mjs",
     "package:web": "node scripts/package-web.mjs"
   },

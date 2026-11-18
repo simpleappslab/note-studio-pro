@@ -36,6 +36,7 @@
   const docs=new Map();
   const languageTimers=new Map();
   const search={case:false,word:false,regex:false,matches:[],index:-1,marks:[],current:null};
+  let jsonPreview=null;
   const activeFile=()=>files.find(f=>f.id===activeId);
   const isDirty=f=>f.content!==f.savedContent;
   const editorForAction=()=>activeEditor===secondary && secondary && !$('secondary-pane').hidden ? secondary : cm;
@@ -109,6 +110,7 @@
   }
   function scheduleSave(){clearTimeout(saveTimer);$('draft-state').innerHTML=icon('check')+'<span>Saving session…</span>';saveTimer=setTimeout(persist,400);}
   function renderFiles() {
+    jsonPreview?.schedule();
     $('file-count').textContent=files.length;
     $('file-list').innerHTML=files.map(f=>`<div role="listitem"><button class="file-row ${f.id===activeId?'active':''}" data-file="${escapeHTML(f.id)}" title="${escapeHTML(f.name)}${isDirty(f)?' · Unsaved to device':''}">${fileType(f)}<span class="file-name">${escapeHTML(f.name)}</span>${isDirty(f)?'<span class="dirty-dot" aria-label="Unsaved changes"></span>':''}</button></div>`).join('');
     $('tabs').innerHTML=files.map(f=>`<div class="tab ${f.id===activeId?'active':''}" data-tab="${escapeHTML(f.id)}"><button class="tab-select" role="tab" aria-selected="${f.id===activeId}" aria-label="${escapeHTML(f.name)}${isDirty(f)?' (unsaved)':''}" data-file="${escapeHTML(f.id)}" tabindex="${f.id===activeId?'0':'-1'}"></button>${fileType(f)}<span class="tab-name">${escapeHTML(f.name)}</span>${isDirty(f)?'<span class="dirty-dot" title="Unsaved to device"></span>':''}<button class="tab-close" data-close="${escapeHTML(f.id)}" title="Close ${escapeHTML(f.name)}" aria-label="Close ${escapeHTML(f.name)}">${icon('close')}</button></div>`).join('');
@@ -164,7 +166,7 @@
     clearTimeout(minimapTimer);minimapTimer=setTimeout(updateMap,100);
     if(!$('search-panel').hidden){clearTimeout(searchTimer);searchTimer=setTimeout(()=>runSearch(false),100);}
   }
-  cm.on('change',onChange);cm.on('cursorActivity',updateStatus);cm.on('scroll',updateMapViewport);cm.on('viewportChange',updateMapViewport);cm.on('focus',()=>{activeEditor=cm;});
+  cm.on('change',onChange);cm.on('cursorActivity',()=>{updateStatus();jsonPreview?.updateActions();});cm.on('scroll',updateMapViewport);cm.on('viewportChange',updateMapViewport);cm.on('focus',()=>{activeEditor=cm;});
   cm.on('gutterClick',(ed,line,gutter)=>{if(gutter==='bookmarks')toggleBookmark(line);});
   function renderBookmarks(){cm.operation(()=>{cm.eachLine(h=>{if(h.gutterMarkers?.bookmarks)cm.setGutterMarker(h,'bookmarks',null);});for(const n of activeFile().bookmarks){if(n<cm.lineCount())cm.setGutterMarker(n,'bookmarks',bookmarkMarker());}});}
   function bookmarkMarker(){const mark=document.createElement('div');mark.className='line-bookmark';mark.textContent='◆';mark.title='Bookmark · click to remove';return mark;}
@@ -177,7 +179,7 @@
     if(!files.some(f=>f.id===id))return;
     if(id===activeId&&cm.getDoc()===docs.get(id)){if(focus)cm.focus();return;}
     clearSearchMarks();unlinkSplit();activeId=id;const f=activeFile();cm.swapDoc(docFor(f));cm.setOption('mode',languages[f.language].mode);cm.setOption('readOnly',f.readOnly);
-    if(!$('secondary-pane').hidden&&secondary)linkSplit();activeEditor=cm;renderFiles();renderBookmarks();updateStatus();updateMap();if(!$('search-panel').hidden)runSearch(false);scheduleSave();refreshEditors();markdownPreview.update(true);
+    if(!$('secondary-pane').hidden&&secondary)linkSplit();activeEditor=cm;renderFiles();renderBookmarks();updateStatus();updateMap();if(!$('search-panel').hidden)runSearch(false);scheduleSave();refreshEditors();markdownPreview.update(true);jsonPreview?.sync();
     $('tabs').querySelector('.tab.active')?.scrollIntoView({block:'nearest',inline:'nearest'});if(focus)cm.focus();
   }
   function applySettings(){
@@ -291,7 +293,7 @@
   function closeModal(){if($('modal').open)$('modal').close();setTimeout(()=>cm.focus(),0);}
   const diffChecker=createNotepadDiffChecker({getFiles:()=>files,getActiveFile:activeFile,getSettings:()=>settings,getMode:language=>languages[language]?.mode||null,detectLanguage:(text,name)=>detectLanguage(name,text),languageLabel:language=>languages[language]?.label||'Plain text',notify,download:downloadBlob,copyText});
   const dataTranspose=createNotepadTranspose({getText:()=>{const ed=editorForAction();return ed.somethingSelected()?ed.getSelection():ed.getValue();},copyText,openDocument:(text,name,language)=>{if(!workspaceHasRoom())return false;const file=makeFile(name,text,{language,languageAuto:false,savedContent:''});files.push(file);switchFile(file.id);return true;}});
-  const jsonPreview=createNotepadJSONPreview({getActiveFile:activeFile,copyText});
+  jsonPreview=createNotepadJSONPreview({getActiveFile:activeFile,copyText,onEditor:refreshEditors,selectionText:()=>{const ed=editorForAction();return ed.somethingSelected()?ed.getSelection():activeFile().content;}});
   const schemaGenerator=createNotepadSchemaGenerator({getFiles:()=>files,getActiveFile:activeFile,getSettings:()=>settings,copyText,download:downloadBlob,openDocument:(text,name,language)=>{if(!workspaceHasRoom())return false;const file=makeFile(name,text,{language,languageAuto:false,savedContent:''});files.push(file);switchFile(file.id);return true;}});
   function showInputModal(title,label,value,submit,button='Confirm'){showModal(title,`<label for="modal-input">${escapeHTML(label)}</label><input id="modal-input" type="text" value="${escapeHTML(value)}" autocomplete="off" spellcheck="false"><div class="form-error" id="modal-error" role="status"></div>`,[{text:'Cancel',action:closeModal},{text:button,className:'primary',action:()=>{const error=submit($('modal-input').value);if(error)$('modal-error').textContent=error;}}]);const input=$('modal-input');input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const error=submit(input.value);if(error)$('modal-error').textContent=error;}});requestAnimationFrame(()=>{input.focus();input.select();});}
   function showSettings(){
@@ -327,7 +329,7 @@
   function actionChecked(id){return ({wrap:settings.wrap,'line-numbers':settings.lineNumbers,minimap:settings.minimap,sidebar:settings.sidebar,split:!$('secondary-pane').hidden,markdown:markdownPreview.isOpen(),focus:document.body.classList.contains('focus-mode'),theme:settings.theme==='dark','read-only':activeFile().readOnly})[id];}
   function closeDropdown(){const d=$('dropdown');d.hidden=true;d.innerHTML='';document.querySelectorAll('[data-menu]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-expanded','false');});}
   function showDropdown(items,anchor,point){
-    const d=$('dropdown');d.innerHTML=items.map(item=>{if(item==='-')return '<div class="menu-separator" role="separator"></div>';if(item==='auto-language'){const checked=activeFile().languageAuto;return `<button role="menuitemradio" aria-checked="${checked}" data-dropdown="auto-language" class="${checked?'checked':''}">${icon(checked?'check':'code')}<span>Auto-detect language</span></button>`;}if(item.startsWith('lang:')){const key=item.slice(5),l=languages[key],checked=!activeFile().languageAuto&&activeFile().language===key;return `<button role="menuitemradio" aria-checked="${checked}" class="${checked?'checked':''}" data-dropdown="${item}">${checked?icon('check'):'<span class="check-spacer"></span>'}<span>${l.label}</span></button>`;}const c=commandById(item);if(!c)return '';const checked=actionChecked(item);return `<button role="${checked!==undefined?'menuitemcheckbox':'menuitem'}" ${checked!==undefined?`aria-checked="${checked}"`:''} class="${checked?'checked':''}" data-dropdown="${item}">${icon(checked?'check':c[3])}<span>${escapeHTML(c[1])}</span>${c[2]?`<kbd>${c[2]}</kbd>`:''}</button>`;}).join('');
+    const d=$('dropdown');d.innerHTML=items.map(item=>{if(item==='-')return '<div class="menu-separator" role="separator"></div>';if(item==='auto-language'){const checked=activeFile().languageAuto;return `<button role="menuitemradio" aria-checked="${checked}" data-dropdown="auto-language" class="${checked?'checked':''}">${icon(checked?'check':'code')}<span>Auto-detect language</span></button>`;}if(item.startsWith('lang:')){const key=item.slice(5),l=languages[key],checked=!activeFile().languageAuto&&activeFile().language===key;return `<button role="menuitemradio" aria-checked="${checked}" class="${checked?'checked':''}" data-dropdown="${item}">${checked?icon('check'):'<span class="check-spacer"></span>'}<span>${l.label}</span></button>`;}const c=commandById(item);if(!c)return '';const checked=actionChecked(item);return `<button role="${checked!==undefined?'menuitemcheckbox':'menuitem'}" ${checked!==undefined?`aria-checked="${checked}"`:''} class="${checked?'checked':''}" data-dropdown="${item}">${icon(checked?'check':c[3])}<span>${escapeHTML(c[1])}</span>${c[2]?`<kbd>${c[2]}</kbd>`:''}</button>`;}).join('');jsonPreview?.updateActions();
     d.hidden=false;const rect=anchor?.getBoundingClientRect();const left=point?.x??rect?.left??20,top=point?.y??rect?.bottom??120;d.style.left=Math.min(left,window.innerWidth-d.offsetWidth-10)+'px';d.style.top=Math.max(5,Math.min(top+3,window.innerHeight-d.offsetHeight-8))+'px';
     d.querySelector('button')?.focus();
   }
@@ -337,6 +339,8 @@
   function setReadOnly(){const f=activeFile();f.readOnly=!f.readOnly;cm.setOption('readOnly',f.readOnly);secondary?.setOption('readOnly',f.readOnly);renderFiles();persist();notify(f.readOnly?'Document is now read only.':'Document is editable.');}
   function dispatch(action,anchor){
     const ed=editorForAction();
+    jsonPreview?.sync();
+    if(jsonPreview&&!jsonPreview.allowed(action))return;
     switch(action){
       case 'new':newFile();break;
       case 'open':$('file-input').click();break;
@@ -451,7 +455,7 @@
     else if(e.altKey&&key==='z'){e.preventDefault();dispatch('wrap');}
     else if(e.key==='Escape'&&document.body.classList.contains('focus-mode'))dispatch('focus');
   },true);
-  renderFiles();renderBookmarks();applySettings();updateStatus();persist();
+  renderFiles();renderBookmarks();applySettings();updateStatus();persist();jsonPreview.sync();
   if(restoringIssue)notify('The previous browser session could not be restored. Import a workspace backup if you have one.',true);
   if(/Mac|iPhone|iPad/.test(navigator.platform)){
     document.querySelector('.command-trigger kbd').textContent='⌘ K';

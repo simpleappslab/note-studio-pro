@@ -1,9 +1,11 @@
 /* Read-only snapshot of the active document, with a lazy, accessible disclosure tree. */
 (function(){
   'use strict';
-  window.createNotepadJSONPreview=function({getActiveFile,copyText}){
+  window.createNotepadJSONPreview=function({getActiveFile,copyText,onEditor,selectionText}){
     const $=id=>document.getElementById(id),dialog=$('json-preview-dialog');
-    let editor=null,data=null,opener=null,rendered=0;
+    let editor=null,data=null,rendered=0,mode="editor",timer=null,lastId=null,lastContent=null,lastLanguage=null;
+    const views=new WeakMap();
+    let valid=false,reason="Available for JSON documents";
     const maxRendered=5000;
     function status(message){$('json-preview-status').textContent=message;}
     function row(value,key,path,root=false){
@@ -89,53 +91,61 @@
       function tableView(node){table(node);}
       tableView(data.tree);
     }
-    function view(mode){
-      for(const name of ['tree','code','grid']){
-        $('json-preview-'+name).hidden=name!==mode;
-        $('json-view-'+name).setAttribute('aria-pressed',String(name===mode));
-      }
-      $('json-collapse').disabled=!data||mode!=='tree';
-      if(mode==='code')requestAnimationFrame(()=>editor?.refresh());
+    function validate(){
+      const file=getActiveFile();valid=false;data=null;
+      reason=file.language!=='json'?'Available for JSON documents':!file.content.trim()?'Enter JSON to enable views':'';
+      if(!reason){try{data=NotepadJSONPreview.parse(file.content);valid=true;}catch(e){reason='JSON unavailable: '+e.message;}}
+      for(const name of ['tree','code','grid']){const button=$('json-view-'+name);button.disabled=!valid;button.title=reason;}
+      $('json-availability').textContent=reason;
+      updateActions();
     }
-    function refresh(){
-      data=null;$('json-preview-grid').replaceChildren();
-      $('json-preview-error').hidden=true;$('json-preview-error').textContent='';
-      $('json-preview-tree').replaceChildren();editor.setValue('');
-      $('json-preview-copy').disabled=true;$('json-collapse').disabled=true;
-      const file=getActiveFile();$('json-preview-source').textContent=file.name+' · read-only snapshot';
-      try{
-        data=NotepadJSONPreview.parse(file.content);
-        editor.setValue(data.formatted);renderTree();renderGrid();
-        $('json-preview-copy').disabled=false;
-        $('json-collapse').disabled=$('json-preview-tree').hidden;
-        status(data.count.toLocaleString()+' values · source document is unchanged');
-      }catch(error){
-        $('json-preview-error').textContent='Cannot preview JSON: '+error.message;
-        $('json-preview-error').hidden=false;
-        status('Correct the JSON in the editor, then reopen the preview.');
-      }
+    function allowed(action){
+      if(action==='format-json')return getActiveFile().language==='json'&&!!getActiveFile().content.trim();
+      if(['json-preview','minify-json','schema'].includes(action))return valid;
+      if(action==='destringify-json'){try{return typeof JSON.parse(selectionText())==='string';}catch{return false;}}
+      return true;
     }
-    function open(){
-      opener=document.activeElement;
-      if(!dialog.open)dialog.showModal();
+    function updateActions(){
+      document.querySelectorAll('[data-action],[data-dropdown]').forEach(button=>{
+        const action=button.dataset.action||button.dataset.dropdown;
+        if(!['format-json','minify-json','schema','json-preview','destringify-json'].includes(action))return;
+        button.disabled=!allowed(action);
+        button.title=button.disabled?(action==='destringify-json'?'Select a valid JSON string':reason||'Available for JSON documents'):'';
+      });
+    }
+    function show(next,remember=true){
+      if(next!=='editor'&&!valid)return;
+      mode=next;if(remember)views.set(getActiveFile(),next);
+      const isEditor=next==='editor';
+      $('editors-area').hidden=!isEditor;dialog.hidden=isEditor;
+      for(const name of ['editor','tree','code','grid'])$('json-view-'+name).setAttribute('aria-pressed',String(name===next));
+      for(const name of ['tree','code','grid'])$('json-preview-'+name).hidden=name!==next;
+      $('json-collapse').hidden=next!=='tree';$('json-preview-copy').hidden=isEditor;
+      if(isEditor){onEditor();return;}
       if(!editor)editor=CodeMirror($('json-preview-code'),{value:'',mode:{name:'javascript',json:true},readOnly:true,lineNumbers:true,lineWrapping:true,viewportMargin:10,screenReaderLabel:'Formatted JSON preview'});
-      refresh();view('tree');
+      editor.setValue(data.formatted);renderTree();renderGrid();
+      $('json-collapse').disabled=false;
+      status(data.count.toLocaleString()+' values · read-only · source document is unchanged');
+      if(next==='code')requestAnimationFrame(()=>editor.refresh());
     }
-    $('json-view-tree').addEventListener('click',()=>view('tree'));
-    $('json-view-code').addEventListener('click',()=>view('code'));
-    $('json-view-grid').addEventListener('click',()=>view('grid'));
+    function sync(){
+      clearTimeout(timer);const f=getActiveFile();
+      if(f.id===lastId&&f.content===lastContent&&f.language===lastLanguage){updateActions();return;}
+      lastId=f.id;lastContent=f.content;lastLanguage=f.language;
+      validate();show(valid?(views.get(f)||'editor'):'editor',false);
+    }
+    function schedule(){clearTimeout(timer);timer=setTimeout(sync,380);}
+    function open(){sync();if(valid)show('tree');}
+    for(const name of ['editor','tree','code','grid'])$('json-view-'+name).addEventListener('click',()=>{sync();show(name);});
     $('json-collapse').addEventListener('click',()=>{
       renderTree();const root=$('json-preview-tree').querySelector('details');if(root)root.open=false;
       if(data)status(data.count.toLocaleString()+' values · source document is unchanged');
     });
-    $('json-preview-refresh').addEventListener('click',refresh);
-    $('json-preview-close').addEventListener('click',()=>dialog.close());
     $('json-preview-copy').addEventListener('click',async()=>{
       if(!data)return;
-      try{await copyText(data.formatted,dialog);status('Formatted JSON copied.');}
+      try{await copyText(data.formatted);status('Formatted JSON copied.');}
       catch{status('Clipboard unavailable. Select text in Preview and use Copy.');}
     });
-    dialog.addEventListener('close',()=>{if(opener?.isConnected)opener.focus();});
-    return {open};
+    return {open,sync,schedule,allowed,updateActions};
   };
 })();

@@ -308,9 +308,9 @@
     const options = maskOptions();
     const rows = Object.entries(NoteMask.categories).map(([key,label]) =>
       `<label class="setting-row">${label}<input class="switch" type="checkbox" id="pi-${key}" ${options.disabled.includes(key) ? '' : 'checked'}></label>`).join('');
-    showModal('PI masking settings', rows + `
+    showModal('PI masking settings', `<fieldset class="pi-types"><legend>Data to mask</legend>${rows}</fieldset>` + `
       <label class="setting-row">Suggest fields to remember<input class="switch" type="checkbox" id="pi-learn" ${options.learn ? 'checked' : ''}></label>
-      <label for="pi-fields">Always mask these field names (one per line)</label>
+      <label for="pi-fields">Custom fields · one per line</label>
       <textarea id="pi-fields" rows="4" spellcheck="false" placeholder="customerAlias"></textarea>
       <p>Approved field names apply to future scans on this browser. Remove a name to forget it.</p>
       <p id="pi-error" role="status"></p>`, [
@@ -330,16 +330,17 @@
   }
   function reviewMask() {
     const editor = editorForAction();
-    const original = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
+    const selection = editor.somethingSelected();
+    const original = selection ? editor.getSelection() : editor.getValue();
     if (!original) { notify('Select or enter a log to mask.'); return; }
     function review() {
       const options = maskOptions();
       let result;
       try { result = NoteMask.scan(original, options); }
       catch { notify('Unable to scan this payload. Try a smaller section.', true); return; }
-      showModal('Mask for AI', `<p>${result.total} occurrences masked. Review the text for missed details before copying.</p>
-        <label for="pi-output">Masked preview</label><textarea id="pi-output" rows="10" spellcheck="false" autocomplete="off"></textarea>
-        <div id="pi-suggestions"></div><p id="pi-status" role="status"></p>`, [
+      showModal('Mask for AI', `<div class="pi-summary"><span class="pi-mark">${icon('shield')}</span><div><strong>${result.total ? result.total + (result.total === 1 ? ' match masked' : ' matches masked') : 'No matches detected'}</strong><small>${selection ? 'Selected text' : 'Whole document'} · ${escapeHTML(activeFile().name)}</small></div></div>
+        <label for="pi-output">Review and edit</label><textarea id="pi-output" rows="10" spellcheck="false" autocomplete="off"></textarea>
+        <p class="pi-help">Check for missed details before copying. Edits here affect only the copy.</p><div id="pi-suggestions"></div><p id="pi-status" role="status"></p>`, [
         {text:'Masking settings', action:() => maskingSettings(review)},
         {text:'Copy reviewed text', className:'primary', action:async () => {
           try { await copyText($('pi-output').value, $('modal')); closeModal(); notify('Reviewed text copied.'); }
@@ -364,8 +365,8 @@
     review();
   }
   function showSettings(){
-    showModal('Make it your workspace',`<button class="button" id="pi-settings">PI masking settings</button>
-      <div class="setting-row"><div><strong>Appearance</strong><span>Choose your preferred light</span></div><select id="setting-theme" aria-label="Appearance"><option value="light">Light</option><option value="dark">Dark</option></select></div>
+    showModal('Editor settings',`<button class="button" id="pi-settings">PI masking settings</button>
+      <div class="setting-row"><div><strong>Appearance</strong><span>Workspace color theme</span></div><select id="setting-theme" aria-label="Appearance"><option value="light">Light</option><option value="dark">Dark</option></select></div>
       <div class="setting-row"><div><strong>Font size</strong><span>Editor text, in pixels</span></div><input type="number" id="setting-font" min="10" max="24" aria-label="Font size"></div>
       <div class="setting-row"><div><strong>Indent size</strong><span>Spaces per indentation level</span></div><select id="setting-indent" aria-label="Indent size"><option value="2">2 spaces</option><option value="4">4 spaces</option><option value="8">8 spaces</option></select></div>
       ${[['tabs','Use tab characters','Indent with tabs instead of spaces',settings.indentWithTabs],['wrap','Word wrap','Keep long lines in view',settings.wrap],['numbers','Line numbers','A little help finding your place',settings.lineNumbers],['map','Document map','See the shape of your file',settings.minimap],['brackets','Auto-close brackets','A matching pair, every time',settings.brackets],['trailing','Show trailing spaces','Highlight whitespace at line endings',settings.trailing]].map(([key,title,desc,checked])=>`<div class="setting-row"><div><strong>${title}</strong><span>${desc}</span></div><input class="switch" type="checkbox" id="setting-${key}" aria-label="${title}" ${checked?'checked':''}></div>`).join('')}`,[{text:'Done',className:'primary',action:closeModal}]);

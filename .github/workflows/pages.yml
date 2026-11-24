@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,6 +30,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
+          name: pages-${{ github.run_attempt }}
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+        with:
+          artifact_name: pages-${{ github.run_attempt }}
+      - name: Wait for uploaded files to become visible
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - name: Retry deployment using the same upload
+        if: steps.deployment.outcome == 'failure'
+        id: retry
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: pages-${{ github.run_attempt }}

@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';">
   <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="note-studio-build" content="1.9.0-c58f739d245267ad">
+  <meta name="note-studio-build" content="1.9.0-1ec1087350b3637d">
   <meta name="theme-color" content="#f6f8fa">
   <meta name="description" content="Your text and code, in one quiet workspace. Note Studio Pro: a private browser editor for text, code, JSON and Markdown.">
   <title>Note Studio Pro · Browser workspace</title>
@@ -38,6 +38,7 @@
   <script defer src="vendor/markdown-task-lists.js"></script>
   <script defer src="markdown-core.js"></script>
   <script defer src="markdown-preview.js"></script>
+  <script defer src="pi-mask.js"></script>
   <script defer src="app.js"></script>
   <!-- PWA_SCRIPT_START -->
   <script defer src="pwa.js"></script>
@@ -84,7 +85,7 @@
   </header>
   <nav class="menubar" aria-label="Application menu"><div id="menus"></div><div class="menu-end"><svg><use href="#i-shield"/></svg><span>Your files stay in your browser</span></div></nav>
   <div class="toolbar" role="toolbar" aria-label="Editor tools">
-    <div class="tool-group"><button class="tool-button" data-action="new" title="New document (Ctrl+N)"><svg><use href="#i-plus"/></svg><span>New</span></button><button class="tool-button" data-action="open" title="Open files (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Open</span></button><button class="tool-button" data-action="save" title="Save a file to your device (Ctrl+S)"><svg><use href="#i-save"/></svg><span>Save</span></button><button class="icon-btn" id="copy-all-button" data-action="copy-all" title="Copy all text to clipboard" aria-label="Copy all text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
+    <div class="tool-group"><button class="tool-button" data-action="new" title="New document (Ctrl+N)"><svg><use href="#i-plus"/></svg><span>New</span></button><button class="tool-button" data-action="open" title="Open files (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Open</span></button><button class="tool-button" data-action="save" title="Save a file to your device (Ctrl+S)"><svg><use href="#i-save"/></svg><span>Save</span></button><button class="tool-button" data-action="mask-ai" title="Review and copy masked logs" aria-label="Mask for AI"><svg><use href="#i-shield"/></svg><span>Mask for AI</span></button><button class="icon-btn" id="copy-all-button" data-action="copy-all" title="Copy all text to clipboard" aria-label="Copy all text"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
     <div class="tool-group"><button class="icon-btn" id="undo-button" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo"/></svg></button><button class="icon-btn" id="redo-button" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg><use href="#i-redo"/></svg></button></div>
     <div class="tool-group"><button class="tool-button" data-action="find" title="Find (Ctrl+F)"><svg><use href="#i-search"/></svg><span>Find</span></button><button class="tool-button" data-action="replace" title="Replace (Ctrl+H)"><svg><use href="#i-replace"/></svg><span>Replace</span></button><button class="tool-button" data-action="diff" title="Compare text and files (Ctrl+Alt+D)" aria-label="Diff checker"><svg><use href="#i-diff"/></svg><span>Diff</span></button></div>
     <div class="tool-group"><button class="tool-button" data-action="format" title="Format JSON, or indent code (Ctrl+Shift+F)"><svg><use href="#i-code"/></svg><span>Format</span></button><button class="icon-btn" id="wrap-button" data-action="wrap" title="Toggle word wrap (Alt+Z)" aria-label="Word wrap" aria-pressed="false"><svg><use href="#i-wrap"/></svg></button></div>

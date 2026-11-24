@@ -11,3 +11,14 @@
 
 /* Exact literal occurrences selected by a double-click. */
 .cm-occurrence-hit{background:#f7e6a0;box-shadow:inset 0 -1px 0 #c4ab54;border-radius:2px}body[data-dark] .cm-occurrence-hit{background:#63531e;box-shadow:inset 0 -1px 0 #bc9e46}
+
+#pi-output, #pi-fields {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-family: monospace;
+  color: inherit;
+  background: transparent;
+  resize: vertical;
+}
+#pi-suggestions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }

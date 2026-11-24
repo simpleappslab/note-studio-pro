@@ -296,12 +296,80 @@
   jsonPreview=createNotepadJSONPreview({getActiveFile:activeFile,copyText,onEditor:refreshEditors,selectionText:()=>{const ed=editorForAction();return ed.somethingSelected()?ed.getSelection():activeFile().content;}});
   const schemaGenerator=createNotepadSchemaGenerator({getFiles:()=>files,getActiveFile:activeFile,getSettings:()=>settings,copyText,download:downloadBlob,openDocument:(text,name,language)=>{if(!workspaceHasRoom())return false;const file=makeFile(name,text,{language,languageAuto:false,savedContent:''});files.push(file);switchFile(file.id);return true;}});
   function showInputModal(title,label,value,submit,button='Confirm'){showModal(title,`<label for="modal-input">${escapeHTML(label)}</label><input id="modal-input" type="text" value="${escapeHTML(value)}" autocomplete="off" spellcheck="false"><div class="form-error" id="modal-error" role="status"></div>`,[{text:'Cancel',action:closeModal},{text:button,className:'primary',action:()=>{const error=submit($('modal-input').value);if(error)$('modal-error').textContent=error;}}]);const input=$('modal-input');input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const error=submit(input.value);if(error)$('modal-error').textContent=error;}});requestAnimationFrame(()=>{input.focus();input.select();});}
+  function maskOptions() {
+    const value = settings.masking || {};
+    return {
+      disabled: Array.isArray(value.disabled) ? value.disabled : [],
+      fields: Array.isArray(value.fields) ? value.fields.filter(key => typeof key === 'string' && NoteMask.validField(key)) : [],
+      learn: value.learn === true
+    };
+  }
+  function maskingSettings(done = closeModal) {
+    const options = maskOptions();
+    const rows = Object.entries(NoteMask.categories).map(([key,label]) =>
+      `<label class="setting-row">${label}<input class="switch" type="checkbox" id="pi-${key}" ${options.disabled.includes(key) ? '' : 'checked'}></label>`).join('');
+    showModal('PI masking settings', rows + `
+      <label class="setting-row">Suggest fields to remember<input class="switch" type="checkbox" id="pi-learn" ${options.learn ? 'checked' : ''}></label>
+      <label for="pi-fields">Always mask these field names (one per line)</label>
+      <textarea id="pi-fields" rows="4" spellcheck="false" placeholder="customerAlias"></textarea>
+      <p>Approved field names apply to future scans on this browser. Remove a name to forget it.</p>
+      <p id="pi-error" role="status"></p>`, [
+      {text:'Cancel', action:done},
+      {text:'Save settings', className:'primary', action:() => {
+        const fields = [...new Set($('pi-fields').value.split(/[\s,]+/).filter(Boolean))];
+        if (fields.length > 256 || !fields.every(NoteMask.validField)) {
+          $('pi-error').textContent = 'Use up to 256 field names of 1–64 letters, digits, dots, underscores or hyphens, starting with a letter or underscore.';
+          return;
+        }
+        settings.masking = {fields, disabled:Object.keys(NoteMask.categories).filter(key => !$('pi-'+key).checked), learn:$('pi-learn').checked};
+        persist();
+        done();
+      }}
+    ]);
+    $('pi-fields').value = options.fields.join('\n');
+  }
+  function reviewMask() {
+    const editor = editorForAction();
+    const original = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
+    if (!original) { notify('Select or enter a log to mask.'); return; }
+    function review() {
+      const options = maskOptions();
+      let result;
+      try { result = NoteMask.scan(original, options); }
+      catch { notify('Unable to scan this payload. Try a smaller section.', true); return; }
+      showModal('Mask for AI', `<p>${result.total} occurrences masked. Review the text for missed details before copying.</p>
+        <label for="pi-output">Masked preview</label><textarea id="pi-output" rows="10" spellcheck="false" autocomplete="off"></textarea>
+        <div id="pi-suggestions"></div><p id="pi-status" role="status"></p>`, [
+        {text:'Masking settings', action:() => maskingSettings(review)},
+        {text:'Copy reviewed text', className:'primary', action:async () => {
+          try { await copyText($('pi-output').value, $('modal')); closeModal(); notify('Reviewed text copied.'); }
+          catch { $('pi-status').textContent = 'Clipboard unavailable. Select and copy the reviewed preview manually.'; }
+        }}
+      ], true);
+      $('pi-output').value = result.text;
+      for (const field of result.suggestions) {
+        const button = document.createElement('button');
+        button.className = 'button';
+        button.textContent = 'Always mask ' + field;
+        button.onclick = () => {
+          if (options.fields.length >= 256) { $('pi-status').textContent = 'Remove a saved field in masking settings first.'; return; }
+          options.fields.push(field);
+          settings.masking = options;
+          persist();
+          review();
+        };
+        $('pi-suggestions').append(button);
+      }
+    }
+    review();
+  }
   function showSettings(){
-    showModal('Make it your workspace',`<p>A few small adjustments for your flow.</p>
+    showModal('Make it your workspace',`<button class="button" id="pi-settings">PI masking settings</button>
       <div class="setting-row"><div><strong>Appearance</strong><span>Choose your preferred light</span></div><select id="setting-theme" aria-label="Appearance"><option value="light">Light</option><option value="dark">Dark</option></select></div>
       <div class="setting-row"><div><strong>Font size</strong><span>Editor text, in pixels</span></div><input type="number" id="setting-font" min="10" max="24" aria-label="Font size"></div>
       <div class="setting-row"><div><strong>Indent size</strong><span>Spaces per indentation level</span></div><select id="setting-indent" aria-label="Indent size"><option value="2">2 spaces</option><option value="4">4 spaces</option><option value="8">8 spaces</option></select></div>
       ${[['tabs','Use tab characters','Indent with tabs instead of spaces',settings.indentWithTabs],['wrap','Word wrap','Keep long lines in view',settings.wrap],['numbers','Line numbers','A little help finding your place',settings.lineNumbers],['map','Document map','See the shape of your file',settings.minimap],['brackets','Auto-close brackets','A matching pair, every time',settings.brackets],['trailing','Show trailing spaces','Highlight whitespace at line endings',settings.trailing]].map(([key,title,desc,checked])=>`<div class="setting-row"><div><strong>${title}</strong><span>${desc}</span></div><input class="switch" type="checkbox" id="setting-${key}" aria-label="${title}" ${checked?'checked':''}></div>`).join('')}`,[{text:'Done',className:'primary',action:closeModal}]);
+    $('pi-settings').onclick=()=>maskingSettings(showSettings);
     $('setting-theme').value=settings.theme;$('setting-font').value=settings.fontSize;$('setting-indent').value=settings.tabSize;
     const changes={'theme':['theme',e=>e.target.value],'font':['fontSize',e=>Math.max(10,Math.min(24,Number(e.target.value)||13))],'indent':['tabSize',e=>Number(e.target.value)],'tabs':['indentWithTabs',e=>e.target.checked],'wrap':['wrap',e=>e.target.checked],'numbers':['lineNumbers',e=>e.target.checked],'map':['minimap',e=>e.target.checked],'brackets':['brackets',e=>e.target.checked],'trailing':['trailing',e=>e.target.checked]};
     for(const [id,[key,read]] of Object.entries(changes))$('setting-'+id).onchange=e=>{settings[key]=read(e);applySettings();};
@@ -311,7 +379,7 @@
   function showAbout(){showModal('About Note Studio Pro',`<div class="about-brand"><img class="about-brand-logo" src="assets/note-studio-pro-logo.png" alt="Note Studio Pro logo"><div class="about-brand-caption"><strong>Note Studio Pro</strong><span class="about-version">VERSION 1.9.0</span></div></div><p>A little space for your notes, code, and next idea. A familiar editing experience, with no installation.</p><div class="about-detail"><strong>Private by design</strong><br>Document contents are processed and stored in this browser. Save downloads a copy; it does not overwrite the original file. Workspace backups let you move drafts between browsers.</div><div class="about-detail">An independent editor inspired by Notepad++. Native plugins, executable macros, and filesystem-wide search are outside this browser version.<br>Powered by <a href="https://codemirror.net/5/" target="_blank" rel="noopener">CodeMirror 5</a> · <a href="vendor/LICENSE-CodeMirror.txt" target="_blank" rel="noopener">MIT license</a>.</div>`,[{text:'Back to editing',className:'primary',action:closeModal}]);}
   const commands=[
     ['new','New document','Ctrl N','plus'],['open','Open files…','Ctrl O','open'],['save','Save file to device','Ctrl S','save'],['save-as','Save file as…','Ctrl Shift S','save'],['rename','Rename document…','','note'],['duplicate-file','Duplicate document','','note'],['close','Close document','','close'],['close-others','Close other documents','','close'],
-    ['undo','Undo','Ctrl Z','undo'],['redo','Redo','Ctrl Shift Z','redo'],['select-all','Select all','Ctrl A','note'],['copy-all','Copy all text to clipboard','','copy'],['duplicate-line','Duplicate line / selection','Ctrl D','note'],['delete-line','Delete current line','Ctrl Shift K','note'],['comment','Toggle comment','Ctrl /','code'],['uppercase','Convert to UPPERCASE','Ctrl Shift U','code'],['lowercase','Convert to lowercase','Ctrl U','code'],['read-only','Toggle read-only mode','','shield'],
+    ['undo','Undo','Ctrl Z','undo'],['redo','Redo','Ctrl Shift Z','redo'],['select-all','Select all','Ctrl A','note'],['mask-ai','Mask for AI','','shield'],['copy-all','Copy all text to clipboard','','copy'],['duplicate-line','Duplicate line / selection','Ctrl D','note'],['delete-line','Delete current line','Ctrl Shift K','note'],['comment','Toggle comment','Ctrl /','code'],['uppercase','Convert to UPPERCASE','Ctrl Shift U','code'],['lowercase','Convert to lowercase','Ctrl U','code'],['read-only','Toggle read-only mode','','shield'],
     ['find','Find in document','Ctrl F','search'],['replace','Find and replace','Ctrl H','replace'],['diff','Diff checker · compare text & files','Ctrl Alt D','diff'],['find-next','Find next','F3','down'],['find-prev','Find previous','Shift F3','up'],['goto','Go to line…','Ctrl G','right'],['bookmark','Toggle line bookmark','Ctrl F2','bookmark'],['next-bookmark','Next bookmark','F2','bookmark'],['previous-bookmark','Previous bookmark','Shift F2','bookmark'],
     ['wrap','Toggle word wrap','Alt Z','wrap'],['sidebar','Toggle explorer','','folder'],['minimap','Toggle document map','','map'],['split','Toggle split editor','','split'],['markdown','Markdown preview','Ctrl Alt M','preview'],['fold-all','Fold all code','','code'],['unfold-all','Unfold all code','','code'],['line-numbers','Toggle line numbers','','note'],['focus','Toggle focus mode','','expand'],['theme','Toggle light / dark theme','','sun'],['zoom-in','Increase font size','','plus'],['zoom-out','Decrease font size','','note'],['zoom-reset','Reset font size','','note'],
     ['auto-language','Auto-detect document language','','code'],['language','Set document language…','','code'],['format','Format / indent code','Ctrl Shift F','code'],['format-json','Format & validate JSON','','code'],['minify-json','Minify JSON','','code'],['stringify-json','Stringify JSON (escape text)','','code'],['destringify-json','Destringify JSON (unescape string)','','code'],['transpose','Data transpose (rows ↔ columns)','','code'],['json-preview','JSON preview & tree','','code'],['schema','Generate JSON Schema / OpenAPI from JSON','','code'],['sort','Sort lines A → Z','','sort'],['sort-desc','Sort lines Z → A','','sort'],['dedupe','Remove duplicate lines','','note'],['trim','Trim trailing spaces','','code'],['remove-empty','Remove empty lines','','note'],['eol','Toggle LF / CRLF line endings','','replace'],['export','Export workspace backup','','save'],['import','Import workspace backup…','','open'],['settings','Editor settings…','','settings'],['shortcuts','Keyboard shortcuts','','keyboard'],['about','About Note Studio Pro','','note']
@@ -324,7 +392,7 @@
     $('palette-input').onkeydown=e=>{if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();index=(index+(e.key==='ArrowDown'?1:-1)+results.length)%Math.max(1,results.length);render();$('palette-results').querySelector('.selected')?.scrollIntoView({block:'nearest'});}else if(e.key==='Enter'&&results[index]){e.preventDefault();const id=results[index][0];modal.close();dispatch(id);}};
     $('palette-results').onclick=e=>{const item=e.target.closest('[data-command]');if(item){modal.close();dispatch(item.dataset.command);}};if(!modal.open)modal.showModal();requestAnimationFrame(()=>$('palette-input').focus());
   }
-  const menuMap={File:['new','open','save','save-as','-', 'rename','duplicate-file','close','close-others','-','export','import'],Edit:['undo','redo','-','select-all','copy-all','duplicate-line','delete-line','comment','-','uppercase','lowercase','read-only'],Search:['find','replace','find-next','find-prev','-','goto','bookmark','next-bookmark','previous-bookmark'],View:['wrap','line-numbers','minimap','sidebar','split','markdown','focus','-','fold-all','unfold-all','-','theme','zoom-in','zoom-out','zoom-reset'],Language:['auto-language','-',...Object.keys(languages).map(k=>'lang:'+k)],Tools:['diff','transpose','json-preview','schema','-','format','format-json','minify-json','stringify-json','destringify-json','-','sort','sort-desc','dedupe','trim','remove-empty','-','settings'],Help:['shortcuts','about']};
+  const menuMap={File:['new','open','save','save-as','-', 'rename','duplicate-file','close','close-others','-','export','import'],Edit:['undo','redo','-','select-all','copy-all','duplicate-line','delete-line','comment','-','uppercase','lowercase','read-only'],Search:['find','replace','find-next','find-prev','-','goto','bookmark','next-bookmark','previous-bookmark'],View:['wrap','line-numbers','minimap','sidebar','split','markdown','focus','-','fold-all','unfold-all','-','theme','zoom-in','zoom-out','zoom-reset'],Language:['auto-language','-',...Object.keys(languages).map(k=>'lang:'+k)],Tools:['mask-ai','diff','transpose','json-preview','schema','-','format','format-json','minify-json','stringify-json','destringify-json','-','sort','sort-desc','dedupe','trim','remove-empty','-','settings'],Help:['shortcuts','about']};
   $('menus').innerHTML=Object.keys(menuMap).map(name=>`<button class="menu-button" data-menu="${name}" aria-haspopup="menu" aria-expanded="false">${name}</button>`).join('');
   function actionChecked(id){return ({wrap:settings.wrap,'line-numbers':settings.lineNumbers,minimap:settings.minimap,sidebar:settings.sidebar,split:!$('secondary-pane').hidden,markdown:markdownPreview.isOpen(),focus:document.body.classList.contains('focus-mode'),theme:settings.theme==='dark','read-only':activeFile().readOnly})[id];}
   function closeDropdown(){const d=$('dropdown');d.hidden=true;d.innerHTML='';document.querySelectorAll('[data-menu]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-expanded','false');});}
@@ -345,6 +413,7 @@
       case 'new':newFile();break;
       case 'open':$('file-input').click();break;
       case 'save':saveFile();break;
+      case 'mask-ai':reviewMask();break;
       case 'copy-all':copyDocument();break;
       case 'save-as':renameFile(activeId,true);break;
       case 'rename':renameFile();break;

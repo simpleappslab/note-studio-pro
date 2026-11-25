@@ -46,7 +46,7 @@
     return f;
   }
   function initialFiles() {
-    const welcome=makeFile('welcome.md',`# Your workspace, at your own pace.\n\nA familiar home for your text, notes, and code — right in the browser.\n\n## Make yourself at home\n\n- Open a file with Ctrl+O, or drop files anywhere.\n- Create a tab with Ctrl+N. Double-click a tab to rename it.\n- Save a file to your device with Ctrl+S.\n- Find with Ctrl+F. Replace with Ctrl+H.\n- Jump to a line with Ctrl+G.\n- Browse every command with Ctrl+K.\n\n## A few useful tools\n\n- Syntax highlighting for JavaScript, JSON, SQL, Python, and more.\n- Format and validate JSON; indent other code.\n- Sort lines, remove duplicates, and trim trailing whitespace.\n- Fold code with the arrows beside line numbers.\n- Click the narrow left gutter to bookmark a line. F2 jumps ahead.\n- Split the editor for two linked views of the same document.\n- Compare text or files with the Diff checker (Ctrl+Alt+D).\n- Toggle word wrap with Alt+Z.\n\n## Your files stay with you\n\nDrafts are restored from this browser's local storage. They are not\nuploaded, synced across devices, or written to the original file.\nUse Save to download a copy, or File → Export workspace for a backup.\nClearing site data or using private browsing can remove local drafts.\n\nThis is an independent browser editor inspired by Notepad++.\nIt does not run native Notepad++ plugins or executables.\n\nHappy editing.\n`);
+    const welcome=makeFile('welcome.md',`# Your workspace, at your own pace.\n\nA familiar home for your text, notes, and code — right in the browser.\n\n## Make yourself at home\n\n- Open a file with Ctrl+O, or drop files anywhere.\n- Create a tab with Ctrl+N. Double-click a tab to rename it.\n- Save a file to your device with Ctrl+S.\n- Find with Ctrl+F. Replace with Ctrl+H.\n- Jump to a line with Ctrl+G.\n- Browse every command with Ctrl+K.\n\n## A few useful tools\n\n- Syntax highlighting for JavaScript, JSON, SQL, Python, and more.\n- Format and validate JSON; indent other code.\n- Sort lines, remove duplicates, and trim trailing whitespace.\n- Fold code with the arrows beside line numbers.\n- Click the narrow left gutter to bookmark a line. F2 jumps ahead.\n- Split the editor for two linked views of the same document.\n- Compare text or files with the Diff checker (Ctrl+Alt+D).\n- Toggle word wrap with Alt+Z.\n\n## Your files stay with you\n\nDrafts are restored from this browser's local storage. They are not\nuploaded, synced across devices, or written to the original file.\nUse Save to write to a selected file, or File → Export workspace for a backup.\nClearing site data or using private browsing can remove local drafts.\n\nThis is an independent browser editor inspired by Notepad++.\nIt does not run native Notepad++ plugins or executables.\n\nHappy editing.\n`);
     const playground=makeFile('playground.js',`/**\n * A fresh page. A little possibility.\n * Your browser workspace is ready when you are.\n */\n\nconst workspace = {\n  name: "My workspace",\n  theme: "a little green",\n  autosave: true,\n  madeFor: "your next idea"\n};\n\n// Start small. Make something useful.\nconst projects = [\n  { name: "A personal website", status: "exploring" },\n  { name: "My everyday tools", status: "building" },\n  { name: "The next big idea", status: "dreaming" }\n];\n\nfunction findYourFlow(projects) {\n  return projects\n    .filter(project => project.status !== "done")\n    .map(({ name, status }) => ({\n      name,\n      status,\n      readyToBegin: true\n    }));\n}\n\n// A few things to try:\n//   Ctrl + F       Find something\n//   Ctrl + H       Find and replace\n//   Alt  + Z       Toggle word wrap\n//   Ctrl + K       Find any command\n\nconst nextUp = findYourFlow(projects);\n\nfor (const project of nextUp) {\n  console.log("Let's work on: " + project.name);\n}\n\n// Your next idea starts here.\n`);
     const json=makeFile('sample.json',JSON.stringify({workspace:'My workspace',version:'1.0',preferences:{theme:'light',indentation:2,wordWrap:false},projects:[{name:'Personal website',tags:['ideas','web'],active:true},{name:'Everyday tools',tags:['productivity'],active:true}],note:'Try changing this file, then use Format JSON.'},null,2)+'\n');
     files=[welcome,playground,json];activeId=playground.id;
@@ -55,7 +55,7 @@
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
     if(saved?.version===1 && Array.isArray(saved.files) && saved.files.length && saved.files.every(f=>typeof f.id==='string'&&typeof f.name==='string'&&typeof f.content==='string')) {
       const seen=new Set();
-      files=saved.files.filter(f=>!seen.has(f.id)&&seen.add(f.id)).slice(0,100).map(f=>makeFile(f.name,f.content,{id:f.id,savedContent:typeof f.savedContent==='string'?f.savedContent:f.content,language:languages[f.language]?f.language:detectLanguage(f.name,f.content),languageAuto:autoLanguageFor(f),eol:f.eol==='CRLF'?'CRLF':'LF',bookmarks:Array.isArray(f.bookmarks)?f.bookmarks.filter(n=>Number.isInteger(n)&&n>=0):[],readOnly:!!f.readOnly}));
+      files=saved.files.filter(f=>!seen.has(f.id)&&seen.add(f.id)).slice(0,100).map(f=>makeFile(f.name,f.content,{id:f.id,linked:f.linked===true,savedContent:typeof f.savedContent==='string'?f.savedContent:f.content,language:languages[f.language]?f.language:detectLanguage(f.name,f.content),languageAuto:autoLanguageFor(f),eol:f.eol==='CRLF'?'CRLF':'LF',bookmarks:Array.isArray(f.bookmarks)?f.bookmarks.filter(n=>Number.isInteger(n)&&n>=0):[],readOnly:!!f.readOnly}));
       activeId=files.some(f=>f.id===saved.activeId)?saved.activeId:files[0].id;
       settings={...defaultSettings,...saved.settings};
       settings.fontSize=Math.max(10,Math.min(24,Number(settings.fontSize)||13));
@@ -120,7 +120,7 @@
     $('language-status').title=f.languageAuto?'Detected automatically · click to choose a language':'Manual language · click and choose Auto-detect to resume';
     $('eol-status').textContent=f.eol;
     $('readonly-label').textContent=f.readOnly?'Read only':'Editable';
-    $('editor-footnote').querySelector('span:last-child').textContent=isDirty(f)?'Draft saved locally · Save to download a copy':'Less setup. More flow.';
+    $('editor-footnote').querySelector('span:last-child').textContent=isDirty(f)?'Local draft · Changes pending on device':'Less setup. More flow.';
     document.title=`${isDirty(f)?'• ':''}${f.name} — Note Studio Pro`;
   }
   function fileType(f){const l=languages[f.language];return `<span class="file-type ${l.ext}" aria-hidden="true">${escapeHTML(l.glyph)}</span>`;}
@@ -192,12 +192,51 @@
   }
   function workspaceHasRoom(){if(files.length<100)return true;notify('This workspace supports up to 100 files. Export a backup before closing files.',true);return false;}
   function newFile(){if(!workspaceHasRoom())return;let n=1;while(files.some(f=>f.name===`untitled-${n}.txt`))n++;const f=makeFile(`untitled-${n}.txt`);files.push(f);switchFile(f.id);}
-  async function openFiles(list){
+  const fileHandles = new WeakMap();
+  const savesInProgress = new WeakSet();
+  let handleDatabase;
+  function accessHandle(id, operation) {
+    if (!handleDatabase) {
+      handleDatabase = new Promise((resolve, reject) => {
+        const request = indexedDB.open('note-studio-file-links', 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('handles');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      }).catch(error => { handleDatabase = undefined; throw error; });
+    }
+    return handleDatabase.then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', operation === undefined ? 'readonly' : 'readwrite');
+      const store = tx.objectStore('handles');
+      const request = operation === undefined ? store.get(id) : operation === null ? store.delete(id) : store.put(operation, id);
+      tx.oncomplete = () => resolve(request.result);
+      tx.onabort = () => reject(tx.error);
+    }));
+  }
+  function linkFile(f, handle) {
+    fileHandles.set(f, handle);
+    f.linked = true;
+    accessHandle(f.id, handle).catch(() => notify('File linked for this session. After reopening, use Save As to select it again.', true));
+  }
+  function forgetFile(f) {
+    if (f.linked) accessHandle(f.id, null).catch(() => {});
+    fileHandles.delete(f);
+    f.linked = false;
+  }
+  async function chooseFiles() {
+    if (!window.showOpenFilePicker) return $('file-input').click();
+    try {
+      const handles = await window.showOpenFilePicker({multiple:true});
+      for (const handle of handles) await openFiles([await handle.getFile()], [handle]);
+    } catch (error) {
+      if (error.name !== 'AbortError') notify('Could not open the selected file.', true);
+    }
+  }
+  async function openFiles(list, handles = []){
     let opened=0;
-    for(const file of list){
+    for(const [index,file] of list.entries()){
       if(files.length>=100){notify('This workspace supports up to 100 files. Export a backup before closing files.',true);break;}
       if(file.size>MAX_FILE){notify(`${file.name} is larger than the 5 MB file limit.`,true);continue;}
-      try{const content=await file.text();if(content.includes('\u0000')){notify(`${file.name} looks like a binary or UTF-16 file. Open UTF-8 text files here.`,true);continue;}const f=makeFile(file.name,content);files.push(f);switchFile(f.id);opened++;}catch{notify(`Could not read ${file.name}.`,true);}
+      try{const content=await file.text();if(content.includes('\u0000')){notify(`${file.name} looks like a binary or UTF-16 file. Open UTF-8 text files here.`,true);continue;}const f=makeFile(file.name,content);if(handles[index])linkFile(f,handles[index]);files.push(f);switchFile(f.id);opened++;}catch{notify(`Could not read ${file.name}.`,true);}
     }
     if(opened)notify(`${opened} ${opened===1?'file':'files'} opened. Drafts stay in this browser.`);$('file-input').value='';
   }
@@ -220,17 +259,58 @@
     catch{notify('Clipboard access is unavailable. Select all text and use your browser’s Copy command.',true);}
     finally{button.disabled=false;}
   }
-  function saveFile(f=activeFile()){
-    const content=f.eol==='CRLF'?f.content.replace(/\n/g,'\r\n'):f.content;
-    downloadBlob(new Blob([content],{type:'text/plain;charset=utf-8'}),f.name);f.savedContent=f.content;renderFiles();persist();notify(`Download started: ${f.name}`);
+  async function saveFile(f = activeFile(), saveAs = false) {
+    if (savesInProgress.has(f)) { notify('A save is already in progress.'); return false; }
+    savesInProgress.add(f);
+    const snapshot = f.content;
+    const content = f.eol === 'CRLF' ? snapshot.replace(/\n/g, '\r\n') : snapshot;
+    try {
+      let handle = saveAs ? null : fileHandles.get(f);
+      if (!saveAs && f.linked && !handle) {
+        handle = await accessHandle(f.id);
+        if (!handle) throw Error('Missing file link');
+      }
+      if (!handle && !window.showSaveFilePicker) {
+        if (!saveAs) {
+          notify('Draft kept here. This browser supports downloading a copy with File → Save As.', true);
+          return false;
+        }
+        downloadBlob(new Blob([content], {type:'text/plain;charset=utf-8'}), f.name);
+        notify('Download started: ' + f.name);
+      } else {
+        if (!handle) handle = await window.showSaveFilePicker({suggestedName:f.name});
+        const writer = await handle.createWritable();
+        try {
+          await writer.write(content);
+          await writer.close();
+        } catch (error) {
+          await writer.abort().catch(() => {});
+          throw error;
+        }
+        if (files.includes(f)) {
+          if (fileHandles.get(f) !== handle) linkFile(f, handle);
+          f.name = handle.name;
+        }
+        notify('Saved ' + handle.name);
+      }
+      f.savedContent = snapshot;
+      renderFiles();
+      persist();
+      return true;
+    } catch (error) {
+      if (error.name !== 'AbortError') notify('Save failed. Your draft is still here. Use Save As to choose the file again.', true);
+      return false;
+    } finally {
+      savesInProgress.delete(f);
+    }
   }
-  function closeFileNow(id){const idx=files.findIndex(f=>f.id===id);if(idx<0)return;const active=id===activeId;if(active)unlinkSplit();files.splice(idx,1);docs.delete(id);clearTimeout(languageTimers.get(id));languageTimers.delete(id);if(!files.length){const f=makeFile('untitled-1.txt');files.push(f);}if(active)switchFile(files[Math.min(idx,files.length-1)].id);else{renderFiles();scheduleSave();}}
-  function closeFile(id){const f=files.find(f=>f.id===id);if(!f)return;if(isDirty(f)){showModal('Close document',`<p><strong>${escapeHTML(f.name)}</strong> has edits that have not been saved to your device. Closing it removes its local draft.</p>`,[{text:'Cancel',action:closeModal},{text:'Discard',className:'danger',action:()=>{closeModal();closeFileNow(id);}},{text:'Save & close',className:'primary',action:()=>{saveFile(f);closeModal();closeFileNow(id);}}]);}else closeFileNow(id);}
+  function closeFileNow(id){const idx=files.findIndex(f=>f.id===id);if(idx<0)return;forgetFile(files[idx]);const active=id===activeId;if(active)unlinkSplit();files.splice(idx,1);docs.delete(id);clearTimeout(languageTimers.get(id));languageTimers.delete(id);if(!files.length){const f=makeFile('untitled-1.txt');files.push(f);}if(active)switchFile(files[Math.min(idx,files.length-1)].id);else{renderFiles();scheduleSave();}}
+  function closeFile(id){const f=files.find(f=>f.id===id);if(!f)return;if(isDirty(f)){showModal('Close document',`<p><strong>${escapeHTML(f.name)}</strong> has edits that have not been saved to your device. Closing it removes its local draft.</p>`,[{text:'Cancel',action:closeModal},{text:'Discard',className:'danger',action:()=>{closeModal();closeFileNow(id);}},{text:'Save & close',className:'primary',action:async()=>{closeModal();if(await saveFile(f) && !isDirty(f))closeFileNow(id);}}]);}else closeFileNow(id);}
   function closeOthers(){const others=files.filter(f=>f.id!==activeId);if(others.some(isDirty)){showModal('Close other documents',`<p>Some other documents have edits that have not been saved to your device. Exporting a workspace backup will keep a copy of every draft.</p>`,[{text:'Cancel',action:closeModal},{text:'Export & close others',className:'primary',action:()=>{exportWorkspace();closeModal();closeOthersNow();}}]);}else closeOthersNow();}
-  function closeOthersNow(){files.filter(f=>f.id!==activeId).forEach(f=>{docs.delete(f.id);clearTimeout(languageTimers.get(f.id));languageTimers.delete(f.id);});files=[activeFile()];renderFiles();persist();}
+  function closeOthersNow(){files.filter(f=>f.id!==activeId).forEach(f=>{forgetFile(f);docs.delete(f.id);clearTimeout(languageTimers.get(f.id));languageTimers.delete(f.id);});files=[activeFile()];renderFiles();persist();}
   function renameFile(id=activeId,saveAfter=false){
     const f=files.find(x=>x.id===id);
-    showInputModal(saveAfter?'Save as':'Rename document','File name',f.name,(name)=>{name=name.trim();if(!name||/[\\/\u0000-\u001f]/.test(name))return 'Use a file name without slashes or control characters.';f.name=name;if(f.languageAuto)f.language=detectLanguage(name,f.content);if(f.id===activeId){cm.setOption('mode',languages[f.language].mode);secondary?.setOption('mode',languages[f.language].mode);}renderFiles();markdownPreview.update();persist();closeModal();if(saveAfter)saveFile(f);else notify('Document renamed.');},saveAfter?'Save file':'Rename');
+    showInputModal(saveAfter?'Save as':'Rename document','File name',f.name,(name)=>{name=name.trim();if(!name||/[\\/\u0000-\u001f]/.test(name))return 'Use a file name without slashes or control characters.';if(f.name!==name)forgetFile(f);f.name=name;if(f.languageAuto)f.language=detectLanguage(name,f.content);if(f.id===activeId){cm.setOption('mode',languages[f.language].mode);secondary?.setOption('mode',languages[f.language].mode);}renderFiles();markdownPreview.update();persist();closeModal();if(saveAfter)saveFile(f,true);else notify('Document renamed.');},saveAfter?'Save file':'Rename');
   }
   function duplicateFile(){if(!workspaceHasRoom())return;const f=activeFile(),dot=f.name.lastIndexOf('.'),base=dot>0?f.name.slice(0,dot):f.name,ext=dot>0?f.name.slice(dot):'',copy=makeFile(`${base} copy${ext}`,f.content,{language:f.language,languageAuto:f.languageAuto,eol:f.eol,savedContent:''});files.push(copy);switchFile(copy.id);notify('Document duplicated.');}
   function exportWorkspace(){downloadBlob(new Blob([JSON.stringify({app:'note-studio-pro',version:1,files,activeId,settings},null,2)],{type:'application/json'}),`note-studio-pro-${new Date().toISOString().slice(0,10)}.json`);notify('Workspace backup download started.');}
@@ -377,7 +457,7 @@
   }
   const shortcutRows=[['New document','Ctrl N'],['Open files','Ctrl O'],['Save to device','Ctrl S'],['Save as','Ctrl Shift S'],['Find / Replace','Ctrl F / Ctrl H'],['Diff checker','Ctrl Alt D'],['Markdown preview','Ctrl Alt M'],['Next / previous match','F3 / Shift F3'],['Go to line','Ctrl G'],['Command palette','Ctrl K'],['Format / indent','Ctrl Shift F'],['Toggle word wrap','Alt Z'],['Duplicate line / selection','Ctrl D'],['Delete line','Ctrl Shift K'],['Toggle comment','Ctrl /'],['Word completion','Ctrl Space'],['Bookmark line','Ctrl F2'],['Next / previous bookmark','F2 / Shift F2'],['Undo / Redo','Ctrl Z / Ctrl Shift Z'],['Next / previous document','Ctrl Alt → / ←'],['Exit focus mode','Esc']];
   function showShortcuts(){showModal('A few shortcuts to your flow',`<table class="shortcuts-table">${shortcutRows.map(([label,key])=>`<tr><td>${label}</td><td><kbd>${key}</kbd></td></tr>`).join('')}</table><p class="shortcut-note">On Mac, ⌘ replaces Ctrl for common shortcuts. Some browser or system shortcuts may take priority. Every action is also available in the menus.</p>`,[{text:'Got it',className:'primary',action:closeModal}]);}
-  function showAbout(){showModal('About Note Studio Pro',`<div class="about-brand"><img class="about-brand-logo" src="assets/note-studio-pro-logo.png" alt="Note Studio Pro logo"><div class="about-brand-caption"><strong>Note Studio Pro</strong><span class="about-version">VERSION 1.9.0</span></div></div><p>A little space for your notes, code, and next idea. A familiar editing experience, with no installation.</p><div class="about-detail"><strong>Private by design</strong><br>Document contents are processed and stored in this browser. Save downloads a copy; it does not overwrite the original file. Workspace backups let you move drafts between browsers.</div><div class="about-detail">An independent editor inspired by Notepad++. Native plugins, executable macros, and filesystem-wide search are outside this browser version.<br>Powered by <a href="https://codemirror.net/5/" target="_blank" rel="noopener">CodeMirror 5</a> · <a href="vendor/LICENSE-CodeMirror.txt" target="_blank" rel="noopener">MIT license</a>.</div>`,[{text:'Back to editing',className:'primary',action:closeModal}]);}
+  function showAbout(){showModal('About Note Studio Pro',`<div class="about-brand"><img class="about-brand-logo" src="assets/note-studio-pro-logo.png" alt="Note Studio Pro logo"><div class="about-brand-caption"><strong>Note Studio Pro</strong><span class="about-version">VERSION 1.9.0</span></div></div><p>A little space for your notes, code, and next idea. A familiar editing experience, with no installation.</p><div class="about-detail"><strong>Private by design</strong><br>Document contents are processed and stored in this browser. Save updates the selected file in supported browsers. Save As lets you choose a destination. Workspace backups let you move drafts between browsers.</div><div class="about-detail">An independent editor inspired by Notepad++. Native plugins, executable macros, and filesystem-wide search are outside this browser version.<br>Powered by <a href="https://codemirror.net/5/" target="_blank" rel="noopener">CodeMirror 5</a> · <a href="vendor/LICENSE-CodeMirror.txt" target="_blank" rel="noopener">MIT license</a>.</div>`,[{text:'Back to editing',className:'primary',action:closeModal}]);}
   const commands=[
     ['new','New document','Ctrl N','plus'],['open','Open files…','Ctrl O','open'],['save','Save file to device','Ctrl S','save'],['save-as','Save file as…','Ctrl Shift S','save'],['rename','Rename document…','','note'],['duplicate-file','Duplicate document','','note'],['close','Close document','','close'],['close-others','Close other documents','','close'],
     ['undo','Undo','Ctrl Z','undo'],['redo','Redo','Ctrl Shift Z','redo'],['select-all','Select all','Ctrl A','note'],['mask-ai','Mask for AI','','shield'],['copy-all','Copy all text to clipboard','','copy'],['duplicate-line','Duplicate line / selection','Ctrl D','note'],['delete-line','Delete current line','Ctrl Shift K','note'],['comment','Toggle comment','Ctrl /','code'],['uppercase','Convert to UPPERCASE','Ctrl Shift U','code'],['lowercase','Convert to lowercase','Ctrl U','code'],['read-only','Toggle read-only mode','','shield'],
@@ -412,11 +492,11 @@
     if(jsonPreview&&!jsonPreview.allowed(action))return;
     switch(action){
       case 'new':newFile();break;
-      case 'open':$('file-input').click();break;
+      case 'open':chooseFiles();break;
       case 'save':saveFile();break;
       case 'mask-ai':reviewMask();break;
       case 'copy-all':copyDocument();break;
-      case 'save-as':renameFile(activeId,true);break;
+      case 'save-as':if(window.showSaveFilePicker)saveFile(activeFile(),true);else renameFile(activeId,true);break;
       case 'rename':renameFile();break;
       case 'duplicate-file':duplicateFile();break;
       case 'close':closeFile(activeId);break;
@@ -503,7 +583,10 @@
   document.addEventListener('dragenter',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();dragDepth++;$('drop-overlay').hidden=false;}});
   document.addEventListener('dragover',e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
   document.addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$('drop-overlay').hidden=true;});
-  document.addEventListener('drop',e=>{if(e.dataTransfer?.files.length){e.preventDefault();dragDepth=0;$('drop-overlay').hidden=true;openFiles([...e.dataTransfer.files]);}});
+  document.addEventListener('drop',e=>{if(e.dataTransfer?.files.length){e.preventDefault();dragDepth=0;$('drop-overlay').hidden=true;const dropped=[...e.dataTransfer.files];
+    const items=[...e.dataTransfer.items].filter(item=>item.kind==='file');
+    const handles=items.map(item=>item.getAsFileSystemHandle?.()?.catch(()=>null));
+    Promise.all(handles).then(results=>openFiles(dropped,results.length===dropped.length?results:[]));}});
   window.addEventListener('blur',()=>{dragDepth=0;$('drop-overlay').hidden=true;persist();});
   window.addEventListener('resize',()=>{closeDropdown();refreshEditors();});
   window.addEventListener('note-studio:before-update',event=>{persist();if(storageFailed)event.preventDefault();});

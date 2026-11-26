@@ -16,8 +16,16 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts
+      - run: npm install --no-save --package-lock=false --ignore-scripts pdf-lib@1.17.1 pdfjs-dist@6.5.438
+      - run: node scripts/vendor-pdf.mjs
+      - run: node --check dist/pdf-studio.mjs && node --check dist/pdf-studio-core.js
       - run: npm run check
       - run: npm test
       - run: node --test scripts/check-pdf-studio.cjs
       - run: npm audit --audit-level=high
       - run: npm run build:pwa
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: allnote-pdf-preview
+          path: dist/

@@ -129,3 +129,5 @@ const NoteMask = (() => {
   return {categories, validField, scan};
 })();
 if (typeof module !== 'undefined') module.exports = NoteMask;
+
+if (typeof window !== 'undefined') window.NoteMask = NoteMask;

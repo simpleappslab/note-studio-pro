@@ -12,7 +12,7 @@ output = args.output.resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 build = output.parent / 'extension-build' / 'note-studio-pro'
 build.mkdir(parents=True, exist_ok=True)
-for name in ['pi-mask.js', 'transpose-core.js', 'transpose.js', 'transpose.css', 'json-preview-core.js', 'json-preview.js', 'json-preview.css', 'app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css', 'pdf-studio.html', 'pdf-studio.css', 'pdf-studio.mjs', 'pdf-studio-core.js', 'pdf-qpdf-worker.js']:
+for name in ['pi-mask.js', 'transpose-core.js', 'transpose.js', 'transpose.css', 'json-preview-core.js', 'json-preview.js', 'json-preview.css', 'app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css', 'pdf-studio.html', 'pdf-studio.css', 'pdf-studio.mjs', 'pdf-studio-core.js', 'pdf-qpdf-worker.js', 'pdf-intelligence.mjs', 'pdf-pi-worker.js', 'pdf-properties.mjs', 'pdf-text-edit.mjs', 'pdf-compare.mjs', 'pdf-batch.mjs']:
     shutil.copy2(source / name, build / name)
 shutil.copytree(source / 'vendor', build / 'vendor', dirs_exist_ok=True)
 shutil.copytree(source / 'assets', build / 'assets', dirs_exist_ok=True)

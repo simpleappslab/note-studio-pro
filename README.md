@@ -97,3 +97,7 @@ Choose **Open PDF** through a browser that supports file handles to enable **Sav
 For a local web preview after checkout, run `npm ci`, `npm run build:pwa`, and `python3 -m http.server 4173 --directory dist`. Open `http://localhost:4173/`. The PDF Studio validation workflow packages the PWA and Chrome preview builds and captures screenshots of both themes.
 
 [PDF Studio security review](PDF-STUDIO-SECURITY.md)
+
+### Phase 3 preview
+
+See [Phase 3 workflows, dependency notices, tests and limits](PDF-STUDIO-PHASE3.md) for OCR, raster redaction, editing, comparison and batch processing.

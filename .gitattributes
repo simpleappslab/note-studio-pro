@@ -1,3 +1,5 @@
 dist/vendor/pdfjs/** linguist-vendored
 dist/vendor/qpdf/** linguist-vendored
 dist/vendor/pdf-lib.min.js linguist-vendored
+dist/vendor/ocr/** linguist-vendored
+dist/vendor/fflate.mjs linguist-vendored

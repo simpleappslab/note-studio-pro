@@ -613,4 +613,14 @@
   if(/Mac|iPhone|iPad/.test(navigator.platform)){
     document.querySelector('.command-trigger kbd').textContent='⌘ K';
   }
+  try {
+    const incoming = JSON.parse(sessionStorage.getItem('allnote-ocr-transfer'));
+    sessionStorage.removeItem('allnote-ocr-transfer');
+    if (incoming && typeof incoming.text === 'string' && typeof incoming.name === 'string' &&
+        incoming.text.length <= MAX_FILE && workspaceHasRoom()) {
+      const file = makeFile(incoming.name, incoming.text, {savedContent: ''});
+      files.push(file);
+      switchFile(file.id);
+    }
+  } catch {}
 })();

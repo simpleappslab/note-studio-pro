@@ -75,6 +75,37 @@ async function canvasLine(page, start, end) {
   await page.mouse.up();
 }
 
+async function scannedFixture(page, text, {hindi = false, rotated = false} = {}) {
+  const image = await page.evaluate(async ({text, hindi}) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 740;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 740, 320);
+    ctx.fillStyle = '#000';
+    if (hindi) {
+      const font = new FontFace('Indic fixture', 'url(vendor/ocr/devanagari.woff)');
+      document.fonts.add(await font.load());
+    }
+    ctx.font = hindi ? '56px "Indic fixture"' : '48px sans-serif';
+    ctx.fillText(text, 45, 115);
+    ctx.fillText(text, 45, 210);
+    return canvas.toDataURL('image/png').split(',')[1];
+  }, {text, hindi});
+  const doc = await PDFDocument.create();
+  const picture = await doc.embedPng(Buffer.from(image, 'base64'));
+  if (rotated) {
+    const degrees = require('pdf-lib').degrees;
+    const leaf = doc.addPage([320, 740]);
+    leaf.setRotation(degrees(90));
+    leaf.drawImage(picture, {x: 320, y: 0, width: 740, height: 320, rotate: degrees(90)});
+  } else {
+    doc.addPage([740, 320]).drawImage(picture, {x: 0, y: 0, width: 740, height: 320});
+  }
+  return Buffer.from(await doc.save());
+}
+
 test('Notes toolbar, PDF thumbnails and drag organization preserve the document form', async ({page}) => {
   await page.goto('/');
   await expect(page.locator('.CodeMirror').first()).toBeVisible();
@@ -127,6 +158,7 @@ test('draws visual edits and a multi-stroke signature and captures both themes',
   await page.locator('#markup').click({position: {x: 390, y: 525}});
   await expect(page.getByRole('button', {name: 'Image', exact: true})).toHaveAttribute('aria-pressed', 'false');
   await page.getByRole('button', {name: 'Signature', exact: true}).click();
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
   await canvasLine(page, [64, 435], [106, 388]);
   await canvasLine(page, [106, 388], [126, 433]);
   await canvasLine(page, [78, 418], [155, 407]);
@@ -335,8 +367,348 @@ test('packaged Chrome extension opens from Notes and works with networking off',
     await expect(page.locator('#status')).toContainText('Reduced size by');
     const {data} = await saveDownload(page);
     expect((await PDFDocument.load(data)).getPageCount()).toBe(3);
+    await open(page, await scannedFixture(page, 'EXTENSION OCR TEST'), 'extension-scan.pdf');
+    await expect(page.locator('#position')).toHaveText('1 / 1');
+    await page.locator('#intelligence summary').click();
+    await click(page, 'ocr');
+    await expect(page.locator('#status')).toContainText('Recognized 1 scanned page(s)', {timeout: 30000});
+    const recognized = await saveDownload(page, 'ocr-txt');
+    expect(recognized.data.toString()).toContain('EXTENSION OCR TEST');
   } finally {
     await context?.close();
     rmSync(temp, {recursive: true, force: true});
   }
+});
+
+test('Phase 3 identifies native sensitive text and reconstructs pages without source objects', async ({page}) => {
+  const doc = await PDFDocument.create();
+  const first = doc.addPage([510, 600]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  first.drawText('Email: agent@example.com', {x: 45, y: 450, size: 24, font});
+  first.drawText('Public information', {x: 45, y: 370, size: 24, font});
+  doc.setTitle('private metadata');
+  await doc.attach(Buffer.from('sensitive attachment'), 'secret.txt', {mimeType: 'text/plain'});
+  doc.addJavaScript('embedded-code', 'this.print();');
+  await navigate(page);
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  await page.locator('#intelligence summary').click();
+  await click(page, 'pi-scan');
+  await expect(page.locator('#redaction-regions li')).toHaveCount(1);
+  const preview = process.env.ALLNOTE_SCREENSHOTS;
+  if (preview) await page.screenshot({path: path.join(preview, 'phase3-redaction.png')});
+  page.once('dialog', dialog => dialog.accept());
+  const {data} = await saveDownload(page, 'redact-export');
+  const result = await PDFDocument.load(data, {updateMetadata: false});
+  expect(result.getTitle()).toBeUndefined();
+  expect(result.catalog.get(PDFName.of('Names'))).toBeUndefined();
+  expect(result.catalog.get(PDFName.of('OpenAction'))).toBeUndefined();
+  expect(data.includes(Buffer.from('agent@example.com'))).toBe(false);
+  const decoded = await page.evaluate(async bytes => {
+    const pdfjs = await import('/vendor/pdfjs/pdf.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.mjs';
+    const task = pdfjs.getDocument({data: Uint8Array.from(bytes)});
+    try {
+      const pdf = await task.promise;
+      const rendered = await pdf.getPage(1);
+      const view = rendered.getViewport({scale: 1});
+      const canvas = document.createElement('canvas');
+      canvas.width = view.width;
+      canvas.height = view.height;
+      await rendered.render({canvas, viewport: view}).promise;
+      return {
+        text: (await rendered.getTextContent()).items.map(item => item.str).join(''),
+        redacted: [...canvas.getContext('2d').getImageData(90, 140, 1, 1).data],
+        background: [...canvas.getContext('2d').getImageData(20, 50, 1, 1).data]
+      };
+    } finally {await task.destroy();}
+  }, [...data]);
+  expect(decoded).toEqual({text: '', redacted: [0, 0, 0, 255], background: [255, 255, 255, 255]});
+});
+
+test('Phase 3 OCR recognizes a scanned page offline and adds independently searchable invisible text', async ({page, context}) => {
+  await page.goto('/');
+  await expect(page.locator('#pwa-status')).toHaveAttribute('data-ready', 'true', {timeout: 30000});
+  await context.setOffline(true);
+  await page.getByRole('link', {name: 'PDF Studio'}).click();
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
+  const image = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 720, 300);
+    ctx.fillStyle = '#000';
+    ctx.font = '48px sans-serif';
+    ctx.fillText('ALLNOTE OCR TEST', 48, 130);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const doc = await PDFDocument.create();
+  const picture = await doc.embedPng(Buffer.from(image, 'base64'));
+  doc.addPage([720, 300]).drawImage(picture, {x: 0, y: 0, width: 720, height: 300});
+  const native = doc.addPage([500, 300]);
+  native.drawText('Native text must remain single');
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 2');
+  await page.locator('#intelligence summary').click();
+  await page.locator('#intelligence-scope').selectOption('all');
+  await click(page, 'ocr');
+  await expect(page.locator('#status')).toContainText('Recognized 1 scanned page(s)', {timeout: 30000});
+  if (process.env.ALLNOTE_SCREENSHOTS) {
+    await page.screenshot({path: path.join(process.env.ALLNOTE_SCREENSHOTS, 'phase3-ocr.png')});
+  }
+  const {data: extracted} = await saveDownload(page, 'ocr-txt');
+  expect(extracted.toString()).toContain('ALLNOTE OCR TEST');
+  await click(page, 'ocr-layer');
+  await expect(page.locator('#status')).toContainText('Searchable text added');
+  const savedOcr = await saveDownload(page);
+  const ocrContents = await page.evaluate(async bytes => {
+    const engine = await import('/vendor/pdfjs/pdf.mjs');
+    engine.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.mjs';
+    const task = engine.getDocument({data: Uint8Array.from(bytes)});
+    try {return (await (await (await task.promise).getPage(1)).getTextContent()).items.map(item => item.str);} finally {await task.destroy();}
+  }, [...savedOcr.data]);
+  expect(ocrContents.join(' ').replace(/\s+/g, ' ')).toContain('ALLNOTE OCR TEST');
+  await page.getByRole('searchbox').first().fill('ALLNOTE OCR TEST');
+  await page.getByRole('button',{name:'Find next'}).click();
+  await expect(page.locator('#status')).toContainText('Match on page 1');
+});
+
+test('Phase 3 edits existing content, form values, metadata, and page bookmarks', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  await page.locator('#existing-text summary').click();
+  await click(page, 'load-editable-text');
+  await expect(page.locator('#editable-block').getByRole('option', {name: 'Project overview'})).toHaveCount(1);
+  await page.locator('#editable-block').selectOption({label: 'Project overview'});
+  await page.locator('#editable-value').fill('Updated overview');
+  await click(page, 'apply-text-edit');
+  await expect(page.locator('#status')).toContainText('Existing text updated');
+
+  await page.locator('#properties summary').click();
+  await click(page, 'read-properties');
+  await page.locator('#property-value-0').fill('Phase 3 edited sample');
+  await click(page, 'save-properties');
+  await expect(page.locator('#status')).toContainText('Document properties updated');
+
+  await page.locator('#forms summary').click();
+  await click(page, 'read-form');
+  await expect(page.locator('#form-data')).toHaveValue(/AllNote/);
+  await page.locator('#form-data').fill(JSON.stringify({Reviewer: 'Edited locally'}));
+  await click(page, 'write-form');
+  await expect(page.locator('#status')).toContainText('Form data updated');
+  await page.locator('#field-name').fill('Approved');
+  await page.locator('#field-kind').selectOption('checkbox');
+  await page.getByRole('button', {name: 'Draw field'}).click();
+  await canvasLine(page, [60, 300], [95, 335]);
+  await expect(page.locator('#status')).toContainText('Form field added.');
+
+  await page.locator('#bookmarks summary').click();
+  await click(page, 'read-bookmarks');
+  await page.locator('#bookmark-title').fill('Review section');
+  await click(page, 'add-bookmark');
+  await expect(page.locator('#bookmark-list')).toContainText('Review section');
+  if (process.env.ALLNOTE_SCREENSHOTS) {
+    await page.screenshot({path: path.join(process.env.ALLNOTE_SCREENSHOTS, 'phase3-editing.png')});
+  }
+  const {data} = await saveDownload(page);
+  const saved = await PDFDocument.load(data, {updateMetadata: false});
+  expect(saved.getTitle()).toBe('Phase 3 edited sample');
+  expect(saved.getForm().getTextField('Reviewer').getText()).toBe('Edited locally');
+  expect(saved.getForm().getCheckBox('Approved').isChecked()).toBe(false);
+  expect(saved.catalog.get(PDFName.of('Outlines'))).toBeDefined();
+  await page.getByRole('searchbox').first().fill('Updated overview');
+  await page.getByRole('button',{name:'Find next'}).click();
+  await expect(page.locator('#status')).toContainText('Match on page 1');
+  await page.getByRole('searchbox').first().fill('Project overview');
+  await page.getByRole('button',{name:'Find next'}).click();
+  await expect(page.locator('#status')).toContainText('No matching text');
+});
+
+test('Phase 3 compares text, images and document structure', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  const other = await PDFDocument.load(await fixture());
+  other.setTitle('Modified copy');
+  other.getPage(0).drawText('Additional copy text', {x: 48, y: 330});
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), click(page, 'compare')]);
+  await chooser.setFiles({name: 'other.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await other.save())});
+  await expect(page.locator('#compare-summary')).toContainText('Metadata');
+  await expect(page.locator('#compare-text')).toContainText('Additional copy text');
+  await page.locator('#compare-mode').selectOption('changes');
+  await expect(page.locator('#compare-diff')).toBeVisible();
+  if (process.env.ALLNOTE_SCREENSHOTS) {
+    await page.screenshot({path: path.join(process.env.ALLNOTE_SCREENSHOTS, 'phase3-comparison.png')});
+  }
+  await page.locator('#compare-audit').click();
+  await expect(page.locator('#status')).toHaveText('Visual audit complete.');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#compare-report').click()]);
+  const report = JSON.parse(readFileSync(await download.path()));
+  expect(report.pageCounts).toEqual([3, 3]);
+  expect(report.pages[0].visualChanges.ratio).toBeGreaterThan(0);
+  expect(report.pages[0].textChanged).toBe(true);
+});
+
+test('Phase 3 batch reports malformed files and archives successful copies', async ({page}) => {
+  await navigate(page);
+  await page.locator('#open-batch').click();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#batch-add').click()]);
+  await chooser.setFiles([
+    {name: 'valid.pdf', mimeType: 'application/pdf', buffer: await fixture()},
+    {name: 'bad.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 broken fixture')}
+  ]);
+  await page.locator('#batch-operation').selectOption('rotate');
+  await page.locator('#batch-concurrency').selectOption('2');
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#batch-run').click();
+  await expect(page.locator('#batch-queue')).toContainText('valid.pdf · Complete');
+  await expect(page.locator('#batch-queue')).toContainText('bad.pdf · Failed');
+  if (process.env.ALLNOTE_SCREENSHOTS) {
+    await page.screenshot({path: path.join(process.env.ALLNOTE_SCREENSHOTS, 'phase3-batch.png')});
+  }
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#batch-zip').click()]);
+  const {unzipSync} = require('fflate');
+  const zip = unzipSync(readFileSync(await download.path()));
+  const rotated = await PDFDocument.load(zip['valid-rotated.pdf']);
+  expect(rotated.getPages().map(item => item.getRotation().angle)).toEqual([90, 90, 90]);
+});
+
+test('Phase 3 loads Hindi OCR for a rotated scan and restarts after cancellation', async ({page}) => {
+  await navigate(page);
+  await open(page, await scannedFixture(page, 'भारत सरकार', {hindi: true, rotated: true}), 'hindi.pdf');
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  await page.locator('#intelligence summary').click();
+  await page.locator('#ocr-language').selectOption('hin');
+  await click(page, 'ocr');
+  await page.locator('#cancel-intelligence').click();
+  await expect(page.locator('#status')).toHaveText('Processing canceled.');
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
+  await click(page, 'ocr');
+  await expect(page.locator('#status')).toContainText('Recognized 1 scanned page(s)', {timeout: 30000});
+  expect((await saveDownload(page, 'ocr-txt')).data.toString()).toContain('भारत सरकार');
+});
+
+test('Phase 3 batches a review plan only for the exact PDF it references', async ({page}) => {
+  await navigate(page);
+  const input = await fixture();
+  await openReady(page, input);
+  await page.locator('#intelligence summary').click();
+  await page.locator('#redact-query').fill('Project overview');
+  await click(page, 'redact-search');
+  await expect(page.locator('#redaction-regions li')).toHaveCount(1);
+  page.once('dialog', dialog => dialog.accept());
+  const plan = await saveDownload(page, 'redact-review');
+  await page.locator('#open-batch').click();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#batch-add').click()]);
+  await chooser.setFiles([
+    {name:'reviewed.pdf', mimeType:'application/pdf', buffer:input},
+    {name:'unreviewed.pdf', mimeType:'application/pdf', buffer:await fixture({compressible:true})}
+  ]);
+  await page.locator('#batch-operation').selectOption('redact');
+  await page.locator('#batch-review').setInputFiles({name:plan.name, mimeType:'application/json', buffer:plan.data});
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#batch-run').click();
+  await expect(page.locator('#batch-queue')).toContainText('reviewed.pdf · Complete');
+  await expect(page.locator('#batch-queue')).toContainText('unreviewed.pdf · Failed');
+});
+
+test('Phase 3 removes standard metadata while preserving native text and forms', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  await page.locator('#properties summary').click();
+  await click(page, 'read-properties');
+  await page.locator('#property-value-1').fill('Private author');
+  await page.locator('#xmp-replace').check();
+  await click(page, 'save-properties');
+  await expect(page.locator('#status')).toContainText('Document properties updated');
+  await expect(page.locator('#xmp-info')).toHaveValue(/Private author/);
+  page.once('dialog', dialog => dialog.accept());
+  const {data} = await saveDownload(page, 'metadata-copy');
+  const doc = await PDFDocument.load(data, {updateMetadata: false});
+  expect(doc.getAuthor()).toBeUndefined();
+  expect(doc.getTitle()).toBeUndefined();
+  expect(doc.catalog.get(PDFName.of('Metadata'))).toBeUndefined();
+  expect(doc.getForm().getTextField('Reviewer').getText()).toBe('AllNote');
+  const report = await saveDownload(page, 'sanitize-report');
+  expect(JSON.parse(report.data).removed.metadata).toBeGreaterThanOrEqual(2);
+});
+
+test('Phase 3 rewrites selected actions, attachments and hidden annotations without rasterizing text', async ({page}) => {
+  const doc = await PDFDocument.create();
+  const leaf = doc.addPage([400, 500]);
+  leaf.drawText('Visible source content');
+  doc.setTitle('Keep title');
+  await doc.attach(Buffer.from('PRIVATE ATTACHMENT CONTENT'), 'private.txt', {mimeType: 'text/plain'});
+  doc.addJavaScript('private-script', 'this.print();');
+  const hidden = doc.context.obj({Type:'Annot', Subtype:'Text', Rect:[30,20,44,36], F:2, Contents: require('pdf-lib').PDFHexString.fromText('hidden note')});
+  const link = doc.context.obj({Type:'Annot', Subtype:'Link', Rect:[30,42,56,56],
+    A:{S:'URI',URI:require('pdf-lib').PDFHexString.fromText('https://example.test/private')}});
+  leaf.node.set(PDFName.of('Annots'), doc.context.obj([doc.context.register(hidden),doc.context.register(link)]));
+  doc.catalog.set(PDFName.of('OpenAction'), doc.context.obj({S:'Launch', F:require('pdf-lib').PDFHexString.fromText('private')}));
+  await navigate(page);
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  await page.locator('#properties summary').click();
+  await page.locator('#sanitize-options [value="metadata"]').uncheck();
+  for (const option of ['attachments','actions','external','annotations']) {
+    await page.locator('#sanitize-options [value="' + option + '"]').check();
+  }
+  page.once('dialog', dialog => dialog.accept());
+  const {data} = await saveDownload(page, 'metadata-copy');
+  const cleaned = await PDFDocument.load(data, {updateMetadata: false});
+  expect(cleaned.getTitle()).toBe('Keep title');
+  expect(cleaned.catalog.get(PDFName.of('OpenAction'))).toBeUndefined();
+  const names = cleaned.catalog.lookup(PDFName.of('Names'));
+  expect(names.get(PDFName.of('EmbeddedFiles'))).toBeUndefined();
+  expect(names.get(PDFName.of('JavaScript'))).toBeUndefined();
+  const notes = cleaned.getPage(0).node.Annots();
+  expect(notes.size()).toBe(1);
+  expect(notes.lookup(0).get(PDFName.of('A'))).toBeUndefined();
+});
+
+test('Phase 3 requests permission before changing an existing digital signature', async ({page}) => {
+  const lib = require('pdf-lib');
+  const doc = await PDFDocument.create();
+  doc.addPage([500, 600]).drawText('Signed document');
+  const signature = doc.context.obj({
+    FT: 'Sig', T: lib.PDFHexString.fromText('Signed'),
+    V: {Type: 'Sig', ByteRange: [0, 10, 20, 10], Contents: lib.PDFHexString.of('00')}
+  });
+  doc.catalog.set(PDFName.of('AcroForm'),
+    doc.context.obj({Fields: [doc.context.register(signature)]}));
+  await navigate(page);
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  const warning = page.waitForEvent('dialog').then(async dialog => {
+    const message = dialog.message();
+    await dialog.dismiss();
+    return message;
+  });
+  await click(page, 'rotate');
+  expect(await warning).toContain('may invalidate the existing digital signature');
+  await expect(page.locator('#document-state')).toHaveText('');
+});
+
+test('Phase 3 creates an unsigned signature widget and writes an appearance without a signature value', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  await page.locator('#forms summary').click();
+  await page.locator('#field-name').fill('InkApproval');
+  await page.locator('#field-kind').selectOption('signature');
+  await page.getByRole('button', {name:'Draw field'}).click();
+  await canvasLine(page, [60, 300], [250, 365]);
+  await expect(page.locator('#status')).toContainText('Form field added.');
+  await page.locator('#forms summary').click();
+  await page.getByRole('button', {name:'Signature', exact:true}).click();
+  await page.locator('#signature-field').selectOption('InkApproval');
+  await canvasLine(page, [96, 314], [125, 337]);
+  await canvasLine(page, [125, 337], [158, 306]);
+  await page.getByRole('button', {name:'Place signature'}).click();
+  await expect(page.locator('#status')).toContainText('visual appearance');
+  const {data} = await saveDownload(page);
+  const doc = await PDFDocument.load(data, {updateMetadata:false});
+  const field = doc.getForm().getSignature('InkApproval');
+  expect(field.acroField.dict.get(PDFName.of('V'))).toBeUndefined();
+  expect(field.acroField.getWidgets()[0].getAppearances().normal).toBeDefined();
 });

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="pdf-studio.css">
   <script defer src="vendor/pdf-lib.min.js"></script>
   <script defer src="pdf-studio-core.js"></script>
+  <script defer src="pi-mask.js"></script>
+  <script defer src="vendor/ocr/fontkit.js"></script>
   <script type="module" src="pdf-studio.mjs"></script>
 </head>
 <body>
@@ -30,6 +32,9 @@
       <button data-op="undo">Undo</button>
       <button data-op="redo">Redo</button>
     </div>
+    <div role="group" aria-label="Productivity">
+      <button data-op="compare">Compare</button><button id="open-batch">Batch</button>
+    </div>
     <div role="group" aria-label="Save">
       <button data-op="save">Save</button>
       <button data-op="save-as">Save As</button>
@@ -37,7 +42,7 @@
   </nav>
   <div class="pdf-body">
     <aside id="page-sidebar" aria-labelledby="pages-heading">
-      <h2 id="pages-heading">Pages</h2>
+      <h2 id="pages-heading">Pages</h2><button id="toggle-pages" aria-expanded="true">Hide pages</button>
       <div class="page-order" role="group" aria-label="Move selected page">
         <button data-op="move-up" aria-label="Move page earlier">↑</button>
         <button data-op="move-down" aria-label="Move page later">↓</button>
@@ -84,6 +89,7 @@
           <button data-tool="signature" aria-pressed="false">Signature</button>
         </div>
         <div id="signature-actions" class="tool-grid" hidden>
+          <label>Signature destination <select id="signature-field"><option value="">Page markup</option></select></label>
           <button id="finish-signature" disabled>Place signature</button>
           <button id="clear-signature">Clear</button>
         </div>
@@ -132,6 +138,113 @@
           <button data-op="unprotect">Remove password</button>
         </div>
       </details>
+      <details id="intelligence">
+        <summary>OCR and redaction</summary>
+        <label>OCR languages <select id="ocr-language">
+          <option value="eng">English</option><option value="hin">Hindi</option>
+          <option value="eng+hin">English + Hindi</option>
+        </select></label>
+        <label>Process <select id="intelligence-scope">
+          <option value="range">Selected page range</option><option value="all">All pages</option>
+        </select></label>
+        <div class="tool-grid">
+          <button data-op="ocr">Recognize scans</button><button data-op="ocr-layer">Make searchable</button>
+          <button data-op="ocr-txt">OCR text file</button><button data-op="ocr-note">Open OCR in Notes</button>
+        </div>
+        <p id="ocr-confidence"></p>
+        <label>Sensitive information categories
+          <select id="pi-categories" multiple size="3">
+            <option value="EMAIL" selected>Email addresses</option><option value="PHONE" selected>Phone numbers</option>
+            <option value="PERSON" selected>Name fields</option><option value="ADDRESS" selected>Address fields</option>
+            <option value="ID" selected>Identifiers</option><option value="SECRET" selected>Credentials and network identifiers</option>
+          </select>
+        </label>
+        <label>Custom rules (one regular expression per line) <textarea id="pi-rules" rows="2" maxlength="2400"></textarea></label>
+        <label>Text to redact <input id="redact-query" type="search" maxlength="160"></label>
+        <div class="tool-grid">
+          <button data-op="pi-scan">Detect sensitive text</button><button data-op="redact-search">Find text regions</button>
+          <button data-tool="redact" aria-pressed="false">Draw redaction</button>
+        </div>
+        <p>Review the highlighted regions on each page. Sensitive information can be missed, especially on unrecognized scans.</p>
+        <div class="tool-grid"><button id="select-regions" disabled>Select all</button><button id="clear-regions" disabled>Clear regions</button></div>
+        <ul id="redaction-regions" aria-label="Redaction regions"></ul>
+        <label>Redaction color <input id="redaction-color" type="color" value="#000000"></label>
+        <div class="tool-grid">
+          <button data-op="redact-export">Export redacted copy</button><button data-op="sanitize">Export pixels only</button><button data-op="redact-review">Export reviewed plan</button>
+        </div>
+        <p>Raster reconstruction keeps visible pixels and discards searchable text, form controls, metadata, attachments and prior revisions.</p>
+        <button id="cancel-intelligence" hidden>Cancel processing</button>
+      </details>
+      <details id="properties">
+        <summary>Document properties</summary>
+        <button data-op="read-properties">Inspect document</button>
+        <div id="property-fields"></div>
+        <button data-op="save-properties">Apply properties</button>
+        <p id="accessibility-info"></p>
+        <label>Source XMP <textarea id="xmp-info" rows="3" readonly></textarea></label>
+        <label><input id="xmp-replace" type="checkbox"> Replace XMP with the document properties</label>
+        <fieldset id="sanitize-options">
+          <legend>Remove from a rewritten copy</legend>
+          <label><input type="checkbox" value="metadata" checked> Standard metadata</label>
+          <label><input type="checkbox" value="attachments"> Standard attachments</label>
+          <label><input type="checkbox" value="actions"> Embedded scripts and standard actions</label>
+          <label><input type="checkbox" value="external"> External action links</label>
+          <label><input type="checkbox" value="annotations"> Annotations marked hidden</label>
+          <label><input type="checkbox" value="fields"> Values in wholly hidden fields</label>
+        </fieldset>
+        <button data-op="metadata-copy">Export sanitized copy</button>
+        <button data-op="sanitize-report">Download sanitization report</button>
+      </details>
+      <details id="existing-text">
+        <summary>Edit existing text</summary>
+        <button data-op="load-editable-text">Find editable text on page</button>
+        <label>Text block <select id="editable-block"><option value="">Select a text block</option></select></label>
+        <label>Replacement text <input id="editable-value" maxlength="500"></label>
+        <label>Replacement font <select id="editable-font">
+          <option>Helvetica</option><option>Helvetica-Bold</option><option>Helvetica-Oblique</option>
+          <option>Helvetica-BoldOblique</option><option>Times-Roman</option><option>Times-Bold</option>
+          <option>Times-Italic</option><option>Times-BoldItalic</option><option>Courier</option>
+          <option>Courier-Bold</option><option>Courier-Oblique</option><option>Courier-BoldOblique</option>
+        </select></label>
+        <div class="field-row">
+          <label>X (pt) <input id="editable-x" type="number" step="any"></label>
+          <label>Y (pt) <input id="editable-y" type="number" step="any"></label>
+          <label>Size (pt) <input id="editable-size" type="number" step="any" min="6" max="144"></label>
+          <label>Color <input id="editable-color" type="color"></label>
+        </div>
+        <label>Alignment <select id="editable-align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+        <button data-op="apply-text-edit">Apply to preview</button>
+        <p>Supported horizontal standard-font blocks only. Clear the replacement to delete the selected block. Use Undo to discard changes.</p>
+      </details>
+      <details id="forms">
+        <summary>AcroForm</summary>
+        <div class="tool-grid">
+          <button data-op="read-form">Load fields</button><button data-op="write-form">Apply form data</button>
+          <button data-op="export-form">Export JSON</button><button data-op="import-form">Import JSON</button>
+          <button data-op="flatten-form">Flatten form</button><button data-op="reset-form">Reset inputs</button>
+        </div>
+        <div id="form-controls"></div>
+        <label>Form data <textarea id="form-data" rows="5" maxlength="200000"></textarea></label>
+        <label>New field name <input id="field-name" maxlength="100"></label>
+        <label>Field type <select id="field-kind">
+          <option value="text">Text</option><option value="checkbox">Checkbox</option>
+          <option value="radio">Radio group</option><option value="dropdown">Dropdown</option><option value="list">List</option>
+          <option value="signature">Unsigned signature appearance</option>
+        </select></label>
+        <label>Choices (one per line) <textarea id="field-options" rows="2" maxlength="2000"></textarea></label>
+        <button data-tool="form-field" aria-pressed="false">Draw field</button>
+      </details>
+      <details id="bookmarks">
+        <summary>Bookmarks</summary>
+        <button data-op="read-bookmarks">Load bookmarks</button>
+        <ol id="bookmark-list"></ol>
+        <label>Bookmark title <input id="bookmark-title" maxlength="200"></label>
+        <div class="tool-grid">
+          <button data-op="add-bookmark">Add current page</button><button data-op="nest-bookmark">Add child</button>
+          <button data-op="rename-bookmark">Rename</button><button data-op="move-bookmark">Move earlier</button>
+          <button data-op="remove-bookmark">Remove</button>
+        </div>
+      </details>
       <details>
         <summary>Export</summary>
         <div class="tool-grid">
@@ -141,10 +254,61 @@
       </details>
     </aside>
   </div>
+  <section id="compare-workspace" class="productivity" hidden aria-labelledby="compare-title">
+    <div class="workspace-bar">
+      <h2 id="compare-title">Compare PDFs</h2>
+      <button id="compare-close">Back to editor</button>
+      <button id="compare-prev">Previous</button><output id="compare-page"></output><button id="compare-next">Next</button>
+      <label>View <select id="compare-mode"><option value="side">Side by side</option>
+        <option value="overlay">Overlay</option><option value="slider">Before and after</option>
+        <option value="changes">Changed pixels</option></select></label>
+      <label>Mix <input type="range" id="compare-mix" min="0" max="100" value="50"></label>
+      <label>Sensitivity <input type="range" id="compare-threshold" min="1" max="128" value="24"></label>
+      <label>Zoom <select id="compare-zoom"><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option></select></label>
+      <label>Find in either document <input type="search" id="compare-search" maxlength="160"></label>
+      <button id="compare-find">Find next</button>
+      <button id="compare-audit">Compare all page images</button><button id="compare-report">Download report</button>
+    </div>
+    <div id="compare-pages" data-mode="side">
+      <canvas id="compare-before" aria-label="Before page"></canvas>
+      <canvas id="compare-after" aria-label="After page"></canvas>
+      <canvas id="compare-diff" aria-label="Changed pixels"></canvas>
+    </div>
+    <p id="compare-summary"></p>
+    <details open><summary>Text changes</summary><pre id="compare-text"></pre></details>
+  </section>
+
+  <section id="batch-workspace" class="productivity" hidden aria-labelledby="batch-title">
+    <div class="workspace-bar">
+      <h2 id="batch-title">Batch processing</h2><button id="batch-close">Back to editor</button>
+      <button id="batch-add">Add PDFs</button><button id="batch-run" disabled>Run batch</button>
+      <button id="batch-cancel" hidden>Cancel</button><button id="batch-zip" disabled>Download ZIP</button>
+      <button id="batch-clear" disabled>Clear queue</button>
+    </div>
+    <div class="batch-fields">
+      <label>Operation <select id="batch-operation">
+        <option value="compress">Lossless compression</option><option value="protect">Set password</option>
+        <option value="unlock">Authorized password removal</option><option value="watermark">Watermark</option>
+        <option value="rotate">Rotate all pages</option><option value="ocr">OCR to text</option>
+        <option value="pi">Sensitive text review report</option><option value="metadata">Remove standard metadata</option><option value="pixels">Sanitize to pixels</option><option value="redact">Redact using a reviewed plan</option>
+        <option value="png">PDF to PNGs</option><option value="txt">PDF to text</option><option value="rename">Rename copies</option>
+      </select></label>
+      <label>Concurrent files <select id="batch-concurrency"><option>1</option><option>2</option></select></label>
+      <label id="batch-value-label" hidden>Operation value <input id="batch-value" maxlength="160"></label>
+      <label id="batch-password-label" hidden>PDF password <input id="batch-password" type="password" maxlength="127" autocomplete="off"></label>
+      <label id="batch-review-label" hidden>Reviewed redaction plan <input id="batch-review" type="file" accept="application/json,.json"></label>
+      <label id="batch-language-label" hidden>OCR language <select id="batch-language"><option value="eng">English</option><option value="hin">Hindi</option><option value="eng+hin">English + Hindi</option></select></label>
+    </div>
+    <p id="batch-drop">Drop up to 30 PDFs here. Output files are separate copies.</p>
+    <ol id="batch-queue"></ol>
+  </section>
+  <input id="compare-input" type="file" hidden accept="application/pdf,.pdf">
+  <input id="batch-input" type="file" hidden accept="application/pdf,.pdf" multiple>
   <footer class="studio-footer">
     <output id="status" role="status" aria-live="polite">Ready</output>
     <span id="document-state"></span>
   </footer>
+  <input id="form-json-file" type="file" hidden accept="application/json,.json">
   <input id="files" type="file" hidden accept="application/pdf,.pdf" multiple>
   <input id="image-files" type="file" hidden accept="image/png,image/jpeg,.png,.jpg,.jpeg" multiple>
   <dialog id="password-dialog" aria-labelledby="password-title">

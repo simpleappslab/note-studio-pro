@@ -3,7 +3,15 @@
 
 importScripts('vendor/qpdf/qpdf-core.js');
 
-self.onmessage = async ({data: {input, operation, password}}) => {
+self.onmessage = async event => {
+  // Dedicated Worker messages use an empty origin. Reject any foreign origin
+  // if a browser supplies an origin for this transport.
+  if (event.origin !== '' && event.origin !== self.location.origin) return;
+  const {input, operation, password} = event.data ?? {};
+  if (!(input instanceof Uint8Array) || input.length > 50 * 1024 * 1024 || typeof password !== 'string') {
+    self.postMessage({error: 'Invalid PDF operation input.'});
+    return;
+  }
   const source = '/input.pdf';
   const output = '/output.pdf';
   // Fixed paths and option forms keep password values out of CLI option parsing.

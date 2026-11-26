@@ -4,6 +4,7 @@ const {mkdirSync, readFileSync, mkdtempSync, rmSync} = require('node:fs');
 const {tmpdir} = require('node:os');
 const path = require('node:path');
 const {execFileSync} = require('node:child_process');
+const vm = require('node:vm');
 
 const route = '/pdf-studio.html';
 const password = '--Café studio 2026';
@@ -178,6 +179,27 @@ test('saves AES-256, rejects wrong passwords, and only removes with authorizatio
   expect((await PDFDocument.load(unlocked.data)).getPageCount()).toBe(3);
   await click(page, 'undo');
   await expect(page.locator('#document-state')).toContainText('Password protected');
+});
+
+test('restricted PDFs require the owner password before edit or removal', async ({page}) => {
+  const bundle = path.resolve('dist/vendor/qpdf');
+  const source = readFileSync(path.join(bundle, 'qpdf-core.js'), 'utf8');
+  const createQpdf = vm.runInNewContext(source + '; createQpdfCore', {
+    WebAssembly, URL, TextEncoder, TextDecoder, crypto, require, process, Buffer, setTimeout, clearTimeout
+  });
+  const qpdf = await createQpdf({wasmBinary: readFileSync(path.join(bundle, 'qpdf-core.wasm'))});
+  qpdf.FS.writeFile('/input.pdf', await fixture());
+  expect(qpdf.callMain(['/input.pdf', '--encrypt', 'reader', 'owner', '256',
+    '--modify=none', '--', '/restricted.pdf'])).toBe(0);
+  await navigate(page);
+  await open(page, Buffer.from(qpdf.FS.readFile('/restricted.pdf')), 'restricted.pdf');
+  await fillPassword(page, 'reader');
+  await expect(page.getByRole('heading', {name: 'PDF owner password required'})).toBeVisible();
+  await fillPassword(page, 'reader');
+  await expect(page.locator('#password-help')).toContainText('does not grant owner access');
+  await fillPassword(page, 'owner');
+  await expect(page.locator('#status')).toHaveText('restricted.pdf · 3 pages');
+  await expect(page.locator('#document-state')).toHaveText('Password protected');
 });
 
 test('lossless compression preserves text and forms; configured raster compression does not', async ({page}) => {

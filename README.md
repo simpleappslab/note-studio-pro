@@ -87,3 +87,13 @@ Native Notepad++ plugins, binary editing, executable macros, filesystem-wide sea
 ## License
 
 CodeMirror 5 is used under its MIT license, included in `dist/vendor/LICENSE-CodeMirror.txt`. Markdown-it is MIT licensed and the task-list plugin is ISC licensed; their notices are included beside the bundled assets.
+
+## PDF Studio
+
+Open **PDF Studio** from the Notes toolbar. Use the page thumbnails to organize a document, then draw or place markup and signatures directly on the page. Use **Compress and protect** for lossless or configurable raster compression and password changes. The PDF engines ship with the app, so these tools also work offline in the installed extension and the cached PWA.
+
+Choose **Open PDF** through a browser that supports file handles to enable **Save** to the opened file. **Save As** uses the browser's save picker when available and downloads a copy otherwise.
+
+For a local web preview after checkout, run `npm ci`, `npm run build:pwa`, and `python3 -m http.server 4173 --directory dist`. Open `http://localhost:4173/`. The PDF Studio validation workflow packages the PWA and Chrome preview builds and captures screenshots of both themes.
+
+[PDF Studio security review](PDF-STUDIO-SECURITY.md)

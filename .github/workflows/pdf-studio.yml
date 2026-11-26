@@ -12,8 +12,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      ALLNOTE_SCREENSHOTS: ${{ runner.temp }}/allnote-preview/screenshots
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -38,6 +36,8 @@ jobs:
         shell: bash
       - run: npx --no-install playwright install --with-deps chromium
       - run: npm run test:browser
+        env:
+          ALLNOTE_SCREENSHOTS: ${{ runner.temp }}/allnote-preview/screenshots
       - name: Package web, PWA and Chrome extension preview
         run: |
           npm run package:web -- "$RUNNER_TEMP/allnote-preview/web"

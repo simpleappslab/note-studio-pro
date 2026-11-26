@@ -96,3 +96,32 @@
   .pdf-options { grid-column: 1 / -1; border-top: 1px solid var(--border); border-left: 0; }
   #paper { padding: 12px; }
 }
+
+#redaction-regions { max-height: 160px; overflow: auto; padding: 0; list-style: none; }
+#redaction-regions li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+#redaction-regions input { width: auto; }
+#pi-rules { width: 100%; min-height: 42px; font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+.productivity { flex: 1; overflow: auto; padding: 16px; }
+.workspace-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.workspace-bar h2 { font-size: 17px; margin-right: 10px; }
+#compare-pages { display: flex; overflow: auto; gap: 12px; align-items: flex-start; padding: 12px; background: var(--surface-2); }
+#compare-pages canvas { background: white; display: block; flex: none; }
+#compare-pages[data-mode="overlay"], #compare-pages[data-mode="slider"] { display: grid; }
+#compare-pages[data-mode="overlay"] canvas, #compare-pages[data-mode="slider"] canvas { grid-area: 1 / 1; }
+#compare-pages:not([data-mode="changes"]) #compare-diff,
+#compare-pages[data-mode="changes"] :is(#compare-before, #compare-after) { display: none; }
+#compare-text, #xmp-info { overflow: auto; max-height: 250px; white-space: pre-wrap; overflow-wrap: anywhere; }
+#form-data, #field-options { width: 100%; font: inherit; background: var(--bg); color: var(--text); }
+.batch-fields { display: flex; flex-wrap: wrap; gap: 12px; }
+.batch-fields label { display: grid; gap: 4px; }
+#batch-drop { border: 1px dashed var(--accent); background: var(--surface); padding: 26px; }
+#batch-queue li { padding: 7px 0; }
+#batch-queue button { margin-left: 8px; }
+#page-sidebar[data-collapsed] #pages, #page-sidebar[data-collapsed] .page-order { display: none; }
+.pdf-body:has(#page-sidebar[data-collapsed]) { grid-template-columns: 76px minmax(0, 1fr) 250px; }
+@media (max-width: 760px) {
+  .pdf-body:has(#page-sidebar[data-collapsed]) { grid-template-columns: 70px minmax(0, 1fr); }
+}
+#pages canvas { width: 100%; height: 100px; object-fit: contain; }
+#xmp-info { width: 100%; font: inherit; background: var(--bg); color: var(--text); }

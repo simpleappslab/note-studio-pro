@@ -1,0 +1,110 @@
+export const properties = [
+  ['Title', 'getTitle', 'setTitle'], ['Author', 'getAuthor', 'setAuthor'],
+  ['Subject', 'getSubject', 'setSubject'], ['Keywords', 'getKeywords', 'setKeywords'],
+  ['Creator', 'getCreator', 'setCreator'], ['Producer', 'getProducer', 'setProducer'],
+  ['Creation date', 'getCreationDate', 'setCreationDate'],
+  ['Modification date', 'getModificationDate', 'setModificationDate']
+];
+
+export function pdfForm(lib, doc) {
+  const form = doc.catalog.lookupMaybe(lib.PDFName.of('AcroForm'), lib.PDFDict);
+  if (form?.has(lib.PDFName.of('XFA'))) throw Error('This PDF contains XFA forms. They are unsupported.');
+  return doc.getForm();
+}
+
+export function formFieldType(lib, field) {
+  const types = [
+    [lib.PDFTextField, 'text'], [lib.PDFCheckBox, 'checkbox'], [lib.PDFRadioGroup, 'radio'],
+    [lib.PDFDropdown, 'dropdown'], [lib.PDFOptionList, 'list'], [lib.PDFSignature, 'signature']
+  ];
+  return types.find(([klass]) => field instanceof klass)?.[1] || 'unsupported';
+}
+
+export function readField(lib, field) {
+  const kind = formFieldType(lib, field);
+  if (kind === 'text') return field.getText() ?? '';
+  if (kind === 'checkbox') return field.isChecked();
+  if (kind === 'radio') return field.getSelected() ?? '';
+  if (kind === 'dropdown' || kind === 'list') return field.getSelected();
+  return null;
+}
+
+export function setField(lib, field, value) {
+  const kind = formFieldType(lib, field);
+  if (kind === 'text' && typeof value === 'string' && value.length <= 10000) {
+    const max = field.getMaxLength();
+    if (max !== undefined && value.length > max) throw Error('A text field exceeds its maximum length.');
+    field.setText(value || undefined);
+    return;
+  }
+  if (kind === 'checkbox' && typeof value === 'boolean') {
+    if (value) field.check();
+    else field.uncheck();
+    return;
+  }
+  if (kind === 'radio' || kind === 'dropdown' || kind === 'list') {
+    const values = typeof value === 'string' ? (value ? [value] : []) : value;
+    if (!Array.isArray(values) || values.some(entry => !field.getOptions().includes(entry))) {
+      throw Error('A selected value is outside the field options.');
+    }
+    if (values.length > 1 && (kind === 'radio' || !field.isMultiselect())) throw Error('Select one value for this field.');
+    if (values.length === 0) field.clear();
+    else field.select(kind === 'radio' ? values[0] : values);
+    return;
+  }
+  if (value !== null || (kind !== 'signature' && kind !== 'unsupported')) {
+    throw Error('Invalid or unsupported form data.');
+  }
+}
+
+export async function treeFromOutline(pdf) {
+  let count = 0;
+  const convert = async (items, depth) => {
+    if (depth > 12) throw Error('Outline nesting exceeds the editing limit.');
+    const nodes = [];
+    for (const item of items) {
+      if (++count > 500) throw Error('Outline exceeds the 500 bookmark limit.');
+      let dest = item.dest;
+      if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+      const ref = Array.isArray(dest) ? dest[0] : null;
+      const index = Number.isInteger(ref) ? ref + 1 : ref ? 1 + await pdf.getPageIndex(ref) : null;
+      nodes.push({title: item.title, index, unsupported: !index || Boolean(item.url || item.action),
+        children: item.items?.length ? await convert(item.items, depth + 1) : []});
+    }
+    return nodes;
+  };
+  return convert((await pdf.getOutline()) || [], 0);
+}
+
+export function writeOutline(lib, doc, nodes) {
+  const key = lib.PDFName.of('Outlines');
+  if (!nodes.length) {
+    doc.catalog.delete(key);
+    return;
+  }
+  const root = doc.context.obj({Type: 'Outlines'});
+  const rootRef = doc.context.register(root);
+  const pages = doc.getPages();
+  const write = (items, parent, parentRef) => {
+    const children = items.map(item => {
+      if (!pages[item.index - 1] || item.unsupported) throw Error('The outline contains an unsupported destination.');
+      const node = doc.context.obj({
+        Title: lib.PDFHexString.fromText(item.title), Parent: parentRef,
+        Dest: [pages[item.index - 1].ref, 'Fit']
+      });
+      return {node, ref: doc.context.register(node)};
+    });
+    let count = children.length;
+    for (const [index, {node, ref}] of children.entries()) {
+      if (index) node.set(lib.PDFName.of('Prev'), children[index - 1].ref);
+      if (index + 1 < children.length) node.set(lib.PDFName.of('Next'), children[index + 1].ref);
+      if (items[index].children.length) count += write(items[index].children, node, ref);
+    }
+    parent.set(lib.PDFName.of('First'), children[0].ref);
+    parent.set(lib.PDFName.of('Last'), children.at(-1).ref);
+    parent.set(lib.PDFName.of('Count'), lib.PDFNumber.of(count));
+    return count;
+  };
+  write(nodes, root, rootRef);
+  doc.catalog.set(key, rootRef);
+}

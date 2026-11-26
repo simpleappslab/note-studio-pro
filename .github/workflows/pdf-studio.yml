@@ -43,7 +43,7 @@ jobs:
           npm run package:web -- "$RUNNER_TEMP/allnote-preview/web"
           python scripts/build-extension.py --output "$RUNNER_TEMP/allnote-extension/allnote-chrome-preview.zip"
           cp "$RUNNER_TEMP/allnote-extension/allnote-chrome-preview.zip" "$RUNNER_TEMP/allnote-preview/"
-          cp "$RUNNER_TEMP/npm-audit.json" PDF-STUDIO-SECURITY.md "$RUNNER_TEMP/allnote-preview/"
+          cp "$RUNNER_TEMP/npm-audit.json" PDF-STUDIO-SECURITY.md PDF-STUDIO-PHASE3.md "$RUNNER_TEMP/allnote-preview/"
       - name: Upload preview packages and screenshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

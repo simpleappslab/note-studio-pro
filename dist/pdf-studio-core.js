@@ -64,8 +64,23 @@
     }
     async function remove(bytes,range){
       const doc=await open(bytes),removed=new Set(pageRange(range,doc.getPageCount()));
-      const keep=doc.getPageIndices().filter(i=>!removed.has(i));
-      return exportPages(doc,keep);
+      if(removed.size===doc.getPageCount())throw Error('Keep at least one page.');
+      for(const index of [...removed].sort((a,b)=>b-a))doc.removePage(index);
+      return doc.save();
+    }
+    async function move(bytes,from,to){
+      const doc=await open(bytes),count=doc.getPageCount();
+      if([from,to].some(i=>!Number.isInteger(i)||i<0||i>=count))throw Error('Invalid page position.');
+      if(from===to)return bytes;
+      const page=doc.getPage(from);
+      // A move can change the parent node and therefore the inherited page attributes.
+      for(const key of ['Resources','MediaBox','CropBox','Rotate']){
+        const name=lib.PDFName.of(key),value=page.node.getInheritableAttribute(name);
+        if(value!==undefined)page.node.set(name,value);
+      }
+      doc.removePage(from);
+      doc.insertPage(to,page);
+      return doc.save();
     }
     async function addText(bytes,pageNumber,text,x,y,size){
       const doc=await open(bytes);
@@ -75,7 +90,7 @@
       p.drawText(text,{x,y,size,font,color:lib.rgb(0,0,0)});
       return doc.save();
     }
-    return Object.freeze({open,merge,extract,rotate,remove,addText});
+    return Object.freeze({open,merge,extract,rotate,remove,move,addText});
   }
   return Object.freeze({pageRange,validateBytes,safeFilename,engine,MAX_BYTES,MAX_PAGES});
 });

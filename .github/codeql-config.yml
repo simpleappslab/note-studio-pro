@@ -1,0 +1,3 @@
+name: AllNote application code
+paths-ignore:
+  - dist/vendor

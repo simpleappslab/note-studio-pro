@@ -1,0 +1,98 @@
+#pdf-app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.studio-header, .studio-toolbar, .pdf-controls, .studio-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.studio-header h1 { font-size: 19px; margin: 0 8px; }
+.studio-header a { color: var(--accent-strong); text-decoration: none; }
+.studio-header a:hover { text-decoration: underline; }
+.local-label { margin-left: auto; color: var(--accent-strong); }
+.studio-toolbar > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.studio-toolbar > div:last-child { margin-left: auto; }
+#pdf-app button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 7px 10px;
+  min-height: 34px;
+}
+#pdf-app button.primary { background: var(--accent-strong); color: var(--bg); }
+#pdf-app button:hover:not(:disabled):not(.primary), #pdf-app button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.pdf-body {
+  display: grid;
+  grid-template-columns: 144px minmax(0, 1fr) 250px;
+  flex: 1;
+  min-height: 0;
+}
+.pdf-body aside { overflow: auto; padding: 12px; background: var(--surface); }
+#page-sidebar { border-right: 1px solid var(--border); }
+#page-sidebar h2 { font-size: 14px; margin: 4px 0 8px; }
+.page-order { display: flex; gap: 5px; }
+.pdf-options { border-left: 1px solid var(--border); }
+.pdf-options details { border-bottom: 1px solid var(--border); padding: 9px 0 11px; }
+.pdf-options summary { font-weight: 650; cursor: pointer; margin-bottom: 5px; }
+.pdf-options label { display: grid; gap: 4px; margin: 8px 0; }
+.pdf-options input, .pdf-options select, .pdf-controls input, .pdf-controls select,
+#password-dialog input {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.pdf-options input[type="color"] { height: 31px; padding: 2px; }
+.field-row, .tool-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5px; }
+.tool-grid { margin-top: 8px; }
+.pdf-options p { color: var(--text); line-height: 1.45; font-size: 12px; margin: 8px 0; }
+.pdf-view { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.pdf-controls { background: var(--surface); padding-inline: 10px; }
+.pdf-controls select { width: auto; }
+.pdf-controls input { width: min(120px, 100%); margin-left: auto; }
+#position { min-width: 46px; text-align: center; }
+#paper {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  background: var(--surface-2);
+}
+#empty { text-align: center; padding: 16vh 6px 0; }
+#empty h2 { margin-bottom: 6px; font-size: 20px; }
+#page-surface { position: relative; width: max-content; margin: auto; box-shadow: 0 3px 20px #0003; }
+#canvas { display: block; background: white; }
+#markup { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#markup[data-tool] { pointer-events: auto; touch-action: none; cursor: crosshair; }
+#pages { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+#pages button { display: grid; gap: 5px; place-items: center; width: 100%; padding: 6px; }
+#pages canvas { max-width: 100%; height: auto; background: white; pointer-events: none; }
+#pages button[aria-current="page"], #pages button[data-drop] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.studio-footer {
+  min-height: 40px;
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  justify-content: space-between;
+  overflow-wrap: anywhere;
+}
+#document-state { color: var(--accent-strong); }
+@media (max-width: 760px) {
+  .studio-header, .studio-toolbar, .studio-footer { padding-inline: 8px; }
+  .studio-toolbar > div:last-child { margin-left: 0; }
+  .pdf-body { grid-template-columns: 82px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(135px, 29dvh); }
+  .pdf-body aside { padding: 7px; }
+  .pdf-options { grid-column: 1 / -1; border-top: 1px solid var(--border); border-left: 0; }
+  #paper { padding: 12px; }
+}

@@ -1,17 +1,18 @@
 from pathlib import Path
 from PIL import Image
 import argparse
-import hashlib, json, re, shutil, zipfile
+import hashlib, json, re, shutil, subprocess, zipfile
 
 parser = argparse.ArgumentParser(description='Package the offline Chrome extension.')
 parser.add_argument('--output', type=Path, required=True, help='Destination ZIP outside the source checkout')
 args = parser.parse_args()
 source = Path(__file__).resolve().parent.parent / 'dist'
+subprocess.run(['node', 'scripts/vendor-pdf.mjs'], cwd=source.parent, check=True)
 output = args.output.resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 build = output.parent / 'extension-build' / 'note-studio-pro'
 build.mkdir(parents=True, exist_ok=True)
-for name in ['pi-mask.js', 'transpose-core.js', 'transpose.js', 'transpose.css', 'json-preview-core.js', 'json-preview.js', 'json-preview.css', 'app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css']:
+for name in ['pi-mask.js', 'transpose-core.js', 'transpose.js', 'transpose.css', 'json-preview-core.js', 'json-preview.js', 'json-preview.css', 'app.js', 'index.html', 'styles.css', 'diff.css', 'diff-core.js', 'diff-checker.js', 'diff-worker.js', 'language-detection.js', 'schema-core.js', 'schema-ui.js', 'schema-worker.js', 'schema.css', 'occurrence-highlight.js', 'markdown-core.js', 'markdown-preview.js', 'markdown-worker.js', 'markdown.css', 'brand.css', 'pdf-studio.html', 'pdf-studio.css', 'pdf-studio.mjs', 'pdf-studio-core.js', 'pdf-qpdf-worker.js']:
     shutil.copy2(source / name, build / name)
 shutil.copytree(source / 'vendor', build / 'vendor', dirs_exist_ok=True)
 shutil.copytree(source / 'assets', build / 'assets', dirs_exist_ok=True)
@@ -44,7 +45,9 @@ manifest = {
     },
     'background': {'service_worker': 'background.js'},
     'homepage_url': 'https://notepad-workbench-ramakant.ramsmahobia.chatgpt.site/',
-    'content_security_policy': {'extension_pages': csp}
+    'content_security_policy': {'extension_pages': csp.replace(
+        "script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'").replace(
+        "connect-src 'none'", "connect-src 'self'").replace("font-src 'self';", "font-src 'self' data:;")}
 }
 (build / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
@@ -87,7 +90,7 @@ for size in [16, 32, 48, 128]:
 <p>Note Studio Pro is a text and code editor that processes documents locally in your browser. This policy covers the packaged Chrome extension.</p>
 <h2>Documents and settings</h2><p>Files you choose to open, document contents, draft names, bookmarks, and editor settings are processed on your device. The extension saves drafts and settings in local browser storage so that you can return to them. It does not upload your documents, send them to the publisher, or include analytics or advertising.</p>
 <h2>Clipboard</h2><p>Copy-all commands write the chosen document contents to your device clipboard when you click them. The extension does not read your clipboard.</p>
-<h2>Files and backups</h2><p>Open reads only the files you explicitly select or drag into the editor. Save and Export workspace create downloads at your request. The extension does not automatically modify the original files. Backup files contain document contents and should be handled as private files.</p>
+<h2>Files and backups</h2><p>Open reads only the files you explicitly select or drag into the editor. PDF Studio edits PDF files in memory. Save writes to the original PDF when you grant file access. Save As creates a local copy, using a download if a save picker is unavailable. Note exports create downloads at your request. Backup files contain document contents and should be handled as private files.</p>
 <h2>Browser access</h2><p>The extension does not request access to websites, browsing history, cookies, or your Google account. Clicking its toolbar icon opens or focuses its own editor tab. It does not replace the Chrome New Tab page.</p>
 <h2>Retention and deletion</h2><p>Drafts remain in this Chrome profile until removed from the workspace, extension data is cleared, or the extension is uninstalled. Export a backup before uninstalling or clearing data. Drafts in the website and the extension are separate; use Export and Import to move a workspace.</p>
 <h2>External links</h2><p>Help and attribution links open only when selected. Those websites have their own policies. Chrome Web Store distribution and Google services are governed by Google's policies.</p>

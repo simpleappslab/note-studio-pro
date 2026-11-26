@@ -13,7 +13,7 @@ with zipfile.ZipFile(web,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     z.writestr('README-FIRST.txt',(root/'PWA-DISTRIBUTION.md').read_text())
 archives.append(web)
 project=output/f'Note-Studio-Pro-GitHub-{version}.zip'
-entries=['dist','scripts','.github','.gitignore','README.md','PWA-DISTRIBUTION.md','RELEASE-NOTES.md','CHROME_WEB_STORE_LISTING.txt','package.json','package-lock.json']
+entries=['dist','scripts','.github','.gitignore','.gitattributes','playwright.config.cjs','README.md','SECURITY-REVIEW.md','PDF-STUDIO-SECURITY.md','PWA-DISTRIBUTION.md','RELEASE-NOTES.md','CHROME_WEB_STORE_LISTING.txt','package.json','package-lock.json']
 with zipfile.ZipFile(project,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name in entries:
         item=root/name

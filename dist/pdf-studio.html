@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self'; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>AllNote PDF Studio</title>
+  <link rel="icon" href="assets/icon48.png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pdf-studio.css">
+  <script defer src="vendor/pdf-lib.min.js"></script>
+  <script defer src="pdf-studio-core.js"></script>
+  <script type="module" src="pdf-studio.mjs"></script>
+</head>
+<body>
+<main id="pdf-app">
+  <header class="studio-header">
+    <a href="index.html">← Notes</a>
+    <h1>PDF Studio</h1>
+    <span class="local-label">On-device workspace</span>
+    <button id="theme" aria-pressed="false">Dark mode</button>
+  </header>
+  <nav class="studio-toolbar" aria-label="PDF tools">
+    <div role="group" aria-label="Files">
+      <button id="open" class="primary">Open PDF</button>
+      <button id="merge">Merge</button>
+      <button id="images">Images to PDF</button>
+    </div>
+    <div role="group" aria-label="History">
+      <button data-op="undo">Undo</button>
+      <button data-op="redo">Redo</button>
+    </div>
+    <div role="group" aria-label="Save">
+      <button data-op="save">Save</button>
+      <button data-op="save-as">Save As</button>
+    </div>
+  </nav>
+  <div class="pdf-body">
+    <aside id="page-sidebar" aria-labelledby="pages-heading">
+      <h2 id="pages-heading">Pages</h2>
+      <div class="page-order" role="group" aria-label="Move selected page">
+        <button data-op="move-up" aria-label="Move page earlier">↑</button>
+        <button data-op="move-down" aria-label="Move page later">↓</button>
+      </div>
+      <ol id="pages"></ol>
+    </aside>
+
+    <section class="pdf-view" aria-label="Document preview">
+      <div class="pdf-controls">
+        <button id="prev" aria-label="Previous page">‹</button>
+        <output id="position">—</output>
+        <button id="next" aria-label="Next page">›</button>
+        <label class="sr-only" for="zoom">Zoom</label>
+        <select id="zoom">
+          <option value=".5">50%</option><option value=".75">75%</option>
+          <option value="1" selected>100%</option><option value="1.5">150%</option><option value="2">200%</option>
+        </select>
+        <label class="sr-only" for="search">Find text</label>
+        <input id="search" type="search" placeholder="Find text" maxlength="200">
+        <button id="find">Find next</button>
+      </div>
+      <div id="paper">
+        <div id="empty">
+          <h2>Open a PDF to begin</h2>
+          <p>Choose a file or drop it here.</p>
+        </div>
+        <div id="page-surface" hidden>
+          <canvas id="canvas" role="img" aria-label="PDF page preview"></canvas>
+          <canvas id="markup" aria-hidden="true"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <aside class="pdf-options" aria-label="Document tools">
+      <details open>
+        <summary>Markup</summary>
+        <div class="tool-grid" role="group" aria-label="Place on page">
+          <button data-tool="text" aria-pressed="false">Text</button>
+          <button data-tool="ink" aria-pressed="false">Pen</button>
+          <button data-tool="highlight" aria-pressed="false">Highlight</button>
+          <button data-tool="rectangle" aria-pressed="false">Rectangle</button>
+          <button data-tool="ellipse" aria-pressed="false">Ellipse</button>
+          <button data-tool="image" aria-pressed="false">Image</button>
+          <button data-tool="signature" aria-pressed="false">Signature</button>
+        </div>
+        <div id="signature-actions" class="tool-grid" hidden>
+          <button id="finish-signature" disabled>Place signature</button>
+          <button id="clear-signature">Clear</button>
+        </div>
+        <p id="tool-help">Choose a tool, then place or draw on the page.</p>
+        <label>Text / watermark <input id="annotation" maxlength="500" placeholder="Enter text"></label>
+        <div class="field-row">
+          <label>Color <input id="color" type="color" value="#235d3e"></label>
+          <label>Size (pt) <input id="size" type="number" value="18" min="6" max="144" required></label>
+        </div>
+        <details class="position-fields">
+          <summary>Set position by coordinates</summary>
+          <div class="field-row">
+            <label>X (pt) <input id="x" type="number" value="36" min="0" required></label>
+            <label>Y (pt) <input id="y" type="number" value="36" min="0" required></label>
+          </div>
+          <p>Coordinates are measured from the bottom left of the displayed page.</p>
+          <button data-op="text">Place text</button>
+          <button data-op="watermark">Watermark selected pages</button>
+        </details>
+      </details>
+      <details open>
+        <summary>Organize</summary>
+        <label>Pages (e.g. 1,3-5) <input id="range" value="1" maxlength="12000"></label>
+        <div class="tool-grid">
+          <button data-op="extract">Extract</button><button data-op="split">Split</button>
+          <button data-op="rotate">Rotate 90°</button><button data-op="remove">Delete</button>
+        </div>
+      </details>
+      <details open>
+        <summary>Compress and protect</summary>
+        <label>Compression <select id="compression">
+          <option value="lossless">Lossless</option><option value="raster">Raster (lossy)</option>
+        </select></label>
+        <div id="raster-options" hidden>
+          <label>Resolution <select id="resolution">
+            <option value="72">72 DPI</option><option value="108" selected>108 DPI</option><option value="144">144 DPI</option><option value="216">216 DPI</option>
+          </select></label>
+          <label>JPEG quality <select id="quality">
+            <option value=".5">50%</option><option value=".75" selected>75%</option><option value=".9">90%</option>
+          </select></label>
+          <p>Raster mode replaces each page with an image. It discards searchable text, links, and forms.</p>
+        </div>
+        <button data-op="compress">Compress</button>
+        <div class="tool-grid">
+          <button data-op="protect">Set password</button>
+          <button data-op="unprotect">Remove password</button>
+        </div>
+      </details>
+      <details>
+        <summary>Export</summary>
+        <div class="tool-grid">
+          <button data-op="png">Page PNG</button><button data-op="jpg">Page JPEG</button>
+          <button data-op="txt">Document text</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+  <footer class="studio-footer">
+    <output id="status" role="status" aria-live="polite">Ready</output>
+    <span id="document-state"></span>
+  </footer>
+  <input id="files" type="file" hidden accept="application/pdf,.pdf" multiple>
+  <input id="image-files" type="file" hidden accept="image/png,image/jpeg,.png,.jpg,.jpeg" multiple>
+  <dialog id="password-dialog" aria-labelledby="password-title">
+    <form method="dialog">
+      <div class="modal-head"><h2 id="password-title">PDF password</h2></div>
+      <div class="modal-body">
+        <p id="password-help"></p>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="off" required maxlength="127">
+        <div id="password-confirmation" hidden>
+          <label for="password-again">Confirm password</label>
+          <input id="password-again" type="password" autocomplete="off" maxlength="127">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="button" value="cancel" formnovalidate>Cancel</button>
+        <button class="button primary" value="accept">Continue</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+</body>
+</html>

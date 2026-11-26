@@ -88,15 +88,6 @@
   overflow-wrap: anywhere;
 }
 #document-state { color: var(--accent-strong); }
-@media (max-width: 760px) {
-  .studio-header, .studio-toolbar, .studio-footer { padding-inline: 8px; }
-  .studio-toolbar > div:last-child { margin-left: 0; }
-  .pdf-body { grid-template-columns: 82px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(135px, 29dvh); }
-  .pdf-body aside { padding: 7px; }
-  .pdf-options { grid-column: 1 / -1; border-top: 1px solid var(--border); border-left: 0; }
-  #paper { padding: 12px; }
-}
-
 #redaction-regions { max-height: 160px; overflow: auto; padding: 0; list-style: none; }
 #redaction-regions li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
 #redaction-regions input { width: auto; }
@@ -120,12 +111,79 @@
 #batch-queue button { margin-left: 8px; }
 #page-sidebar[data-collapsed] #pages, #page-sidebar[data-collapsed] .page-order { display: none; }
 .pdf-body:has(#page-sidebar[data-collapsed]) { grid-template-columns: 76px minmax(0, 1fr) 250px; }
-@media (max-width: 760px) {
-  .pdf-body:has(#page-sidebar[data-collapsed]) { grid-template-columns: 70px minmax(0, 1fr); }
-}
 #pages canvas { width: 100%; height: 100px; object-fit: contain; }
 #xmp-info { width: 100%; font: inherit; background: var(--bg); color: var(--text); }
 #sanitize-options { padding: 5px 7px; margin: 10px 0; border: 1px solid var(--border); }
 #sanitize-options label { display: flex; align-items: center; }
 #sanitize-options input, #xmp-replace { width: auto; }
 #signature-actions label { grid-column: 1 / -1; }
+
+#page-surface[data-fit] { max-width: 100%; }
+#page-surface[data-fit] #canvas { max-width: 100%; height: auto; }
+.mobile-only { display: none; }
+
+@media (max-width: 900px) {
+  #pdf-app {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #pdf-app .mobile-only { display: inline-flex; }
+  #pdf-app :is(button, .studio-header a, select, input:not([type="checkbox"], [type="radio"]), summary) {
+    min-height: 44px;
+  }
+  #pdf-app :is(input, select, textarea) { font-size: 16px; max-width: 100%; }
+  .studio-header, .studio-toolbar, .studio-footer { padding: 5px 8px; gap: 6px; }
+  .studio-header { flex-wrap: nowrap; }
+  .studio-header a { display: flex; align-items: center; white-space: nowrap; }
+  .studio-header h1 { font-size: 16px; margin: 0 auto 0 0; }
+  .local-label { display: none; }
+  .studio-toolbar > div[aria-label="Save"] { margin-left: auto; }
+  #pdf-app:not([data-actions]) .studio-toolbar :is(#merge, #images, [data-op="save"]),
+  #pdf-app:not([data-actions]) .studio-toolbar :is([aria-label="History"], [aria-label="Productivity"]) {
+    display: none;
+  }
+  #pdf-app[data-actions] .studio-toolbar {
+    max-height: 30dvh;
+    overflow-y: auto;
+    align-content: start;
+  }
+  #pdf-app .pdf-body { display: flex; flex-direction: column; position: relative; min-height: 0; }
+  .pdf-view { flex: 1; }
+  .pdf-controls { gap: 5px; padding: 5px 8px; }
+  .pdf-controls :is(#search, #find) { order: 1; }
+  .pdf-controls #search { flex: 1 1 calc(100% - 100px); min-width: 0; }
+  #position { min-width: 38px; }
+  #paper { padding: 8px; }
+  #empty { padding-top: 8vh; }
+  #pdf-app .pdf-body aside {
+    position: absolute;
+    z-index: 2;
+    inset: auto 0 0;
+    max-height: min(75%, 50dvh);
+    display: none;
+    border: 1px solid var(--border);
+    box-shadow: 0 -3px 14px #0002;
+    overscroll-behavior: contain;
+  }
+  #pdf-app[data-panel="pages"] #page-sidebar,
+  #pdf-app[data-panel="tools"] .pdf-options { display: block; }
+  #toggle-pages { display: none; }
+  #page-sidebar[data-collapsed] .page-order { display: flex; }
+  #page-sidebar[data-collapsed] #pages { display: grid; }
+  #pages { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  .pdf-options summary { display: list-item; padding-block: 12px; }
+  #mobile-tool-hint {
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: var(--surface);
+  }
+  #mobile-tool-hint button { flex-shrink: 0; }
+  .studio-footer { min-height: 32px; }
+  .productivity { min-height: 0; padding: 8px; }
+  .workspace-bar h2 { flex-basis: 100%; }
+  .workspace-bar label, .batch-fields label { min-width: 0; }
+  #compare-pages[data-fit] canvas { max-width: 100%; height: auto; }
+  #compare-pages[data-fit][data-mode="side"] canvas { width: calc((100% - 12px) / 2); }
+}

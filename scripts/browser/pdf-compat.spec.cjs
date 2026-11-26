@@ -27,3 +27,18 @@ test('PDF web viewer and password export work on the configured browser engine',
   const encrypted = readFileSync(await download.path());
   expect((await PDFDocument.load(encrypted, {ignoreEncryption: true})).isEncrypted).toBe(true);
 });
+
+test('narrow web layout keeps page controls available and closes tool drawers with Escape', async ({page}) => {
+  await page.setViewportSize({width: 375, height: 740});
+  await page.goto('/pdf-studio.html');
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
+  const tools = page.getByRole('button', {name: 'Tools', exact: true});
+  await expect(page.locator('#document-tools')).toBeHidden();
+  await tools.click();
+  await expect(page.locator('#document-tools')).toBeVisible();
+  await expect(tools).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#document-tools')).toBeHidden();
+  await expect(tools).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+});

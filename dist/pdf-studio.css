@@ -128,3 +128,4 @@
 #sanitize-options { padding: 5px 7px; margin: 10px 0; border: 1px solid var(--border); }
 #sanitize-options label { display: flex; align-items: center; }
 #sanitize-options input, #xmp-replace { width: auto; }
+#signature-actions label { grid-column: 1 / -1; }

@@ -158,6 +158,7 @@ test('draws visual edits and a multi-stroke signature and captures both themes',
   await page.locator('#markup').click({position: {x: 390, y: 525}});
   await expect(page.getByRole('button', {name: 'Image', exact: true})).toHaveAttribute('aria-pressed', 'false');
   await page.getByRole('button', {name: 'Signature', exact: true}).click();
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
   await canvasLine(page, [64, 435], [106, 388]);
   await canvasLine(page, [106, 388], [126, 433]);
   await canvasLine(page, [78, 418], [155, 407]);
@@ -687,4 +688,27 @@ test('Phase 3 requests permission before changing an existing digital signature'
   await click(page, 'rotate');
   expect(await warning).toContain('may invalidate the existing digital signature');
   await expect(page.locator('#document-state')).toHaveText('');
+});
+
+test('Phase 3 creates an unsigned signature widget and writes an appearance without a signature value', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  await page.locator('#forms summary').click();
+  await page.locator('#field-name').fill('InkApproval');
+  await page.locator('#field-kind').selectOption('signature');
+  await page.getByRole('button', {name:'Draw field'}).click();
+  await canvasLine(page, [60, 300], [250, 365]);
+  await expect(page.locator('#status')).toContainText('Form field added.');
+  await page.locator('#forms summary').click();
+  await page.getByRole('button', {name:'Signature', exact:true}).click();
+  await page.locator('#signature-field').selectOption('InkApproval');
+  await canvasLine(page, [96, 314], [125, 337]);
+  await canvasLine(page, [125, 337], [158, 306]);
+  await page.getByRole('button', {name:'Place signature'}).click();
+  await expect(page.locator('#status')).toContainText('visual appearance');
+  const {data} = await saveDownload(page);
+  const doc = await PDFDocument.load(data, {updateMetadata:false});
+  const field = doc.getForm().getSignature('InkApproval');
+  expect(field.acroField.dict.get(PDFName.of('V'))).toBeUndefined();
+  expect(field.acroField.getWidgets()[0].getAppearances().normal).toBeDefined();
 });

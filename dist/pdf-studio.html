@@ -89,6 +89,7 @@
           <button data-tool="signature" aria-pressed="false">Signature</button>
         </div>
         <div id="signature-actions" class="tool-grid" hidden>
+          <label>Signature destination <select id="signature-field"><option value="">Page markup</option></select></label>
           <button id="finish-signature" disabled>Place signature</button>
           <button id="clear-signature">Clear</button>
         </div>
@@ -228,6 +229,7 @@
         <label>Field type <select id="field-kind">
           <option value="text">Text</option><option value="checkbox">Checkbox</option>
           <option value="radio">Radio group</option><option value="dropdown">Dropdown</option><option value="list">List</option>
+          <option value="signature">Unsigned signature appearance</option>
         </select></label>
         <label>Choices (one per line) <textarea id="field-options" rows="2" maxlength="2000"></textarea></label>
         <button data-tool="form-field" aria-pressed="false">Draw field</button>

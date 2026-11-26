@@ -375,6 +375,7 @@ async function display(state, index = page) {
   sanitizationResult = null;
   $('form-data').value = '';
   $('form-controls').replaceChildren();
+  $('signature-field').replaceChildren(new Option('Page markup', ''));
   bookmarkTree = null;
   pickedBookmark = null;
   $('bookmark-list').replaceChildren();
@@ -704,7 +705,10 @@ for (const button of document.querySelectorAll('[data-tool]')) {
     const next = button.dataset.tool;
     if (next === tool) setTool('');
     else if (next === 'image') chooseImages('markup');
-    else setTool(next);
+    else {
+      setTool(next);
+      if (next === 'signature') void run(loadSignatureDestinations);
+    }
   };
 }
 
@@ -838,7 +842,7 @@ markup.onpointermove = event => {
   const point = pointerPoint(event);
   if (tool === 'highlight' || tool === 'rectangle' || tool === 'ellipse' || tool === 'redact') {
     stroke[1] = point;
-  } else if (stroke.length < 3000) {
+  } else if (stroke.length < 1200) {
     stroke.push(point);
   }
   drawDraft();
@@ -869,7 +873,8 @@ markup.onpointercancel = () => {
   drawDraft();
 };
 
-$('finish-signature').onclick = () => void run(() => drawMarkup('signature', signature));
+$('finish-signature').onclick = () => void run(() => $('signature-field').value
+  ? writeSignatureAppearance() : drawMarkup('signature', signature));
 $('clear-signature').onclick = () => setTool('signature');
 
 function canvasBlob(canvas, type, quality) {
@@ -1510,6 +1515,64 @@ async function resetForm() {
   })));
 }
 
+function signatureWidgets(field, target) {
+  const annotationDicts = new Set();
+  const annotations = target.node.Annots();
+  if (annotations) {
+    for (let i = 0; i < annotations.size(); i++) annotationDicts.add(annotations.lookup(i));
+  }
+  return field.acroField.getWidgets().filter(widget => annotationDicts.has(widget.dict));
+}
+
+async function loadSignatureDestinations() {
+  const select = $('signature-field');
+  select.replaceChildren(new Option('Page markup', ''));
+  const doc = await engine.open(current.data);
+  const formDict = doc.catalog.lookupMaybe(lib.PDFName.of('AcroForm'), lib.PDFDict);
+  if (!formDict || formDict.has(lib.PDFName.of('XFA'))) return;
+  const target = doc.getPage(page - 1);
+  for (const field of pdfForm(lib, doc).getFields()) {
+    if (field instanceof lib.PDFSignature && !field.isReadOnly() &&
+        !field.acroField.dict.has(lib.PDFName.of('V')) && signatureWidgets(field, target).length) {
+      select.add(new Option(field.getName(), field.getName()));
+    }
+  }
+}
+
+async function writeSignatureAppearance() {
+  const doc = await engine.open(current.data);
+  const field = pdfForm(lib, doc).getFieldMaybe($('signature-field').value);
+  if (!(field instanceof lib.PDFSignature) || field.isReadOnly() ||
+      field.acroField.dict.has(lib.PDFName.of('V'))) throw Error('Only unsigned signature widgets are available.');
+  const [widget] = signatureWidgets(field, doc.getPage(page - 1));
+  if (!widget) throw Error('The signature widget is on a different page.');
+  const {width, height} = widget.getRectangle();
+  const points = signature.flat();
+  const left = Math.min(...points.map(point => point[0]));
+  const top = Math.min(...points.map(point => point[1]));
+  const sourceWidth = Math.max(...points.map(point => point[0])) - left;
+  const sourceHeight = Math.max(...points.map(point => point[1])) - top;
+  if (sourceWidth < 1 && sourceHeight < 1) throw Error('Draw a signature before placing it.');
+  if (width < 8 || height < 8 || width > 4096 || height > 4096) throw Error('Unsupported signature widget bounds.');
+  const factor = Math.min((width - 6) / Math.max(1, sourceWidth), (height - 6) / Math.max(1, sourceHeight));
+  const offsetX = (width - sourceWidth * factor) / 2;
+  const offsetY = (height - sourceHeight * factor) / 2;
+  const coordinates = point => [offsetX + (point[0] - left) * factor,
+    height - offsetY - (point[1] - top) * factor];
+  const color = selectedColor();
+  const operators = [lib.setLineWidth(1.8), lib.setLineCap(lib.LineCapStyle.Round),
+    lib.setStrokingRgbColor(color.red, color.green, color.blue)];
+  for (const path of signature) {
+    operators.push(lib.moveTo(...coordinates(path[0])));
+    for (const point of path.slice(1)) operators.push(lib.lineTo(...coordinates(point)));
+    operators.push(lib.stroke());
+  }
+  const appearance = doc.context.formXObject(operators, {BBox: [0, 0, width, height]});
+  widget.setNormalAppearance(doc.context.register(appearance));
+  await change(await doc.save({updateFieldAppearances: false}));
+  status('Handwriting placed in the unsigned widget as a visual appearance.');
+}
+
 async function createFormField(first, last) {
   const doc = await engine.open(current.data);
   const form = pdfForm(lib, doc);
@@ -1526,7 +1589,15 @@ async function createFormField(first, last) {
   if (['radio', 'dropdown', 'list'].includes(kind) && (!options.length || options.length > 20)) {
     throw Error('Enter between 1 and 20 distinct choices.');
   }
-  if (kind === 'radio') {
+  if (kind === 'signature') {
+    if (!/^[a-z0-9_-]+$/i.test(name)) throw Error('Use letters, numbers, hyphens or underscores for a signature field.');
+    const widget = doc.context.obj({Type: 'Annot', Subtype: 'Widget', FT: 'Sig',
+      T: lib.PDFHexString.fromText(name), P: target.ref, F: 4,
+      Rect: [box.x, box.y, box.x + box.width, box.y + box.height]});
+    const reference = doc.context.register(widget);
+    form.acroForm.addField(reference);
+    target.node.addAnnot(reference);
+  } else if (kind === 'radio') {
     const group = form.createRadioGroup(name);
     const height = box.height / options.length;
     if (height < 10) throw Error('Draw a taller area for the radio options.');
@@ -1689,6 +1760,7 @@ $('compare-input').onchange = () => {
 $('compare-close').onclick = () => void run(async () => {
   const previous = comparison;
   comparison = comparisonImages = null;
+  for (const canvas of $('compare-pages').querySelectorAll('canvas')) canvas.width = canvas.height = 0;
   workspace('');
   await previous.task.destroy();
 });

@@ -1,5 +1,5 @@
 import * as pdfjs from './vendor/pdfjs/pdf.mjs';
-import {properties, pdfForm, readField, setField, formFieldType, treeFromOutline, writeOutline} from './pdf-properties.mjs';
+import {properties, pdfForm, readField, setField, formFieldType, treeFromOutline, writeOutline, scrubPdf} from './pdf-properties.mjs';
 import {recognizePages, searchablePDF, rectangle, rasterRedact} from './pdf-intelligence.mjs';
 
 import {listEditableText, rewriteText} from './pdf-text-edit.mjs';
@@ -1147,7 +1147,7 @@ function detectRows(rows, query, signal) {
     }
     signal.addEventListener('abort', stop, {once: true});
     worker.onerror = () => finish(reject, Error('The local detection worker could not start.'));
-    worker.onmessage = ({data}) => data.error ? finish(reject, Error(data.error)) : finish(resolve, data.indices);
+    worker.onmessage = ({data}) => data.error ? finish(reject, Error(data.error)) : finish(resolve, data.matches);
     worker.postMessage({rows: rows.map(row => row.text), options: {disabled, fields}, custom, query});
   });
 }
@@ -1162,17 +1162,16 @@ async function scanRegions(query) {
       rows.push(...native);
       if (!native.length) {
         const result = ocrResults.find(item => item.index === index);
-        if (result) rows.push(...result.words.map(word => ({...word, index})));
+        if (result) rows.push(...result.rows.map(row => ({...row, index})));
       }
       if (rows.length > 40000) throw Error('Scan fewer pages. The selection exceeds 40,000 text regions.');
     }
     signal.throwIfAborted();
     const matches = await detectRows(rows, query, signal);
     if (matches.length > 2000) throw Error('Too many matches. Use a narrower page range or search.');
-    for (const index of matches) {
+    for (const {index, label} of matches) {
       const {text, ...row} = rows[index];
       if (ignoredText.has(text)) continue;
-      const label = query ? 'Text match' : 'Possible sensitive text';
       regions.push({...row, text, selected: true, label});
     }
     renderRegions();
@@ -1196,7 +1195,8 @@ function renderRegions() {
       drawDraft();
     };
     const button = document.createElement('button');
-    button.textContent = 'Page ' + region.index + ' · ' + region.label;
+    button.textContent = 'Page ' + region.index + ' · ' + region.label +
+      (Number.isFinite(region.confidence) ? ' · OCR ' + Math.round(region.confidence) + '%' : '');
     button.onclick = () => void run(() => go(region.index));
     item.append(check, button);
     if (region.text) {
@@ -1282,6 +1282,22 @@ let sanitizationResult = null;
 let bookmarkTree = null;
 let pickedBookmark = null;
 let warnedSignature = false;
+
+async function exportMetadataRemoved() {
+  const selections = new Set([...$('sanitize-options').querySelectorAll('input:checked')].map(input => input.value));
+  if (!selections.size) throw Error('Select at least one sanitization option.');
+  if (!confirm('Export a rewritten copy? Unselected structures, visible page content and private values in other structures can remain.')) return;
+  await intelligenceOperation(async signal => {
+    const result = await scrubPdf(lib, engine, current.data, selections, signal);
+    const bytes = await transformPdf(result.data, 'rewrite', '', signal);
+    download(await exportBytes(bytes), stem() + '-sanitized.pdf');
+    sanitizationResult = {mode: 'selected standard structures', removed: result.counts,
+      remaining: ['Unselected structures and proprietary keys can remain.',
+        'Page pixels and content are retained. Use pixel reconstruction for permanent redaction.',
+        'Counts describe removed objects or references and do not certify the absence of hidden data.']};
+    status('Sanitized copy requested. Review the report and output before sharing.');
+  });
+}
 
 async function inspectProperties() {
   const doc = await engine.open(current.data);
@@ -1874,6 +1890,10 @@ async function batchProcess(file, signal, config) {
       }
       return output(await doc.save(), '-watermarked');
     }
+    if (op === 'metadata') {
+      const result = await scrubPdf(lib, engine, data, new Set(['metadata']), signal);
+      return output(await transformPdf(result.data, 'rewrite', '', signal), '-metadata-removed');
+    }
     if (op === 'pixels' || op === 'redact') {
       const redacting = op === 'redact';
       if (redacting && (review.sha256 !== await fingerprint(data) || review.pages !== pdf.numPages)) {
@@ -2005,6 +2025,7 @@ const operations = {
   sanitize: () => exportRaster(false),
   compare: () => $('compare-input').click(),
   'read-properties': inspectProperties,
+  'metadata-copy': exportMetadataRemoved,
   'sanitize-report': () => download(JSON.stringify(sanitizationResult, null, 2),
     stem() + '-sanitization.json', 'application/json'),
   'load-editable-text': findEditBlocks,

@@ -182,6 +182,16 @@
         <p id="accessibility-info"></p>
         <label>Source XMP <textarea id="xmp-info" rows="3" readonly></textarea></label>
         <label><input id="xmp-replace" type="checkbox"> Replace XMP with the document properties</label>
+        <fieldset id="sanitize-options">
+          <legend>Remove from a rewritten copy</legend>
+          <label><input type="checkbox" value="metadata" checked> Standard metadata</label>
+          <label><input type="checkbox" value="attachments"> Standard attachments</label>
+          <label><input type="checkbox" value="actions"> Embedded scripts and standard actions</label>
+          <label><input type="checkbox" value="external"> External action links</label>
+          <label><input type="checkbox" value="annotations"> Annotations marked hidden</label>
+          <label><input type="checkbox" value="fields"> Values in wholly hidden fields</label>
+        </fieldset>
+        <button data-op="metadata-copy">Export sanitized copy</button>
         <button data-op="sanitize-report">Download sanitization report</button>
       </details>
       <details id="existing-text">
@@ -278,7 +288,7 @@
         <option value="compress">Lossless compression</option><option value="protect">Set password</option>
         <option value="unlock">Authorized password removal</option><option value="watermark">Watermark</option>
         <option value="rotate">Rotate all pages</option><option value="ocr">OCR to text</option>
-        <option value="pi">Sensitive text review report</option><option value="pixels">Sanitize to pixels</option><option value="redact">Redact using a reviewed plan</option>
+        <option value="pi">Sensitive text review report</option><option value="metadata">Remove standard metadata</option><option value="pixels">Sanitize to pixels</option><option value="redact">Redact using a reviewed plan</option>
         <option value="png">PDF to PNGs</option><option value="txt">PDF to text</option><option value="rename">Rename copies</option>
       </select></label>
       <label>Concurrent files <select id="batch-concurrency"><option>1</option><option>2</option></select></label>

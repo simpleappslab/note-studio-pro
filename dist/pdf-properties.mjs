@@ -108,3 +108,86 @@ export function writeOutline(lib, doc, nodes) {
   write(nodes, root, rootRef);
   doc.catalog.set(key, rootRef);
 }
+
+// Target known PDF structures; unknown private keys and visible pixels can carry data.
+export async function scrubPdf(lib, engine, bytes, selections, signal) {
+  const doc = await engine.open(bytes);
+  const name = key => lib.PDFName.of(key);
+  const seen = new Set();
+  const pending = doc.context.enumerateIndirectObjects().map(([, value]) => value);
+  const counts = Object.fromEntries([...selections].map(key => [key, 0]));
+  const remove = (dict, key, kind) => {
+    if (dict.delete(name(key))) counts[kind]++;
+  };
+  const actionTypes = new Set(['JavaScript','Launch','URI','GoToR','GoToE','SubmitForm','ImportData',
+    'Rendition','RichMediaExecute','Movie','Sound','Named','ResetForm','GoTo','Hide','SetOCGState',
+    'Thread','Trans','SetState','GoTo3DView']);
+  const actionKind = value => value instanceof lib.PDFDict
+    ? value.get(name('S'))?.asString?.()?.slice(1) : null;
+  const hidden = dict => Boolean((dict.get(name('F'))?.asNumber?.() || 0) & (1 | 2 | 32));
+
+  if (selections.has('metadata') && doc.context.trailerInfo.Info) {
+    delete doc.context.trailerInfo.Info;
+    counts.metadata++;
+  }
+  if (selections.has('fields')) {
+    for (const field of pdfForm(lib, doc).getFields()) {
+      if (field instanceof lib.PDFSignature) continue;
+      const widgets = field.acroField.getWidgets();
+      if (widgets.some(widget => !hidden(widget.dict))) continue;
+      for (const key of ['V','DV','RV']) remove(field.acroField.dict, key, 'fields');
+      for (const widget of widgets) remove(widget.dict, 'AP', 'fields');
+    }
+  }
+
+  while (pending.length) {
+    signal?.throwIfAborted();
+    const value = pending.pop();
+    if (seen.has(value)) continue;
+    if (value instanceof lib.PDFRawStream || value instanceof lib.PDFContentStream) {
+      pending.push(value.dict);
+    } else if (value instanceof lib.PDFDict) {
+      if (selections.has('metadata')) remove(value, 'Metadata', 'metadata');
+      if (selections.has('attachments')) {
+        for (const key of ['EmbeddedFiles','AF','EF']) remove(value, key, 'attachments');
+      }
+      if (selections.has('actions')) {
+        for (const key of ['AA','OpenAction','JavaScript','JS']) remove(value, key, 'actions');
+      }
+      const automatic = actionKind(value);
+      if (automatic && selections.has('actions') && actionTypes.has(automatic)) {
+        for (const key of ['Next','F','Win','Mac','Unix']) remove(value, key, 'actions');
+      }
+      const action = value.lookup(name('A'));
+      const kind = actionKind(action);
+      if (selections.has('external') && ['URI','GoToR','GoToE','Launch'].includes(kind)) {
+        remove(value, 'A', 'external');
+      } else if (selections.has('actions') && actionTypes.has(kind)) {
+        remove(value, 'A', 'actions');
+      }
+      if (selections.has('annotations') || selections.has('attachments')) {
+        const annotations = value.lookupMaybe(name('Annots'), lib.PDFArray);
+        if (annotations) {
+          for (let i = annotations.size() - 1; i >= 0; i--) {
+            const annotation = annotations.lookup(i);
+            if (!(annotation instanceof lib.PDFDict)) continue;
+            if (selections.has('attachments') && annotation.get(name('Subtype'))?.asString?.() === '/FileAttachment') {
+              annotations.remove(i);
+              counts.attachments++;
+            } else if (selections.has('annotations') && hidden(annotation)) {
+              annotations.remove(i);
+              counts.annotations++;
+            }
+          }
+        }
+      }
+      for (const nested of value.values()) pending.push(nested);
+    } else if (value instanceof lib.PDFArray) {
+      for (const nested of value.asArray()) pending.push(nested);
+    } else {
+      continue;
+    }
+    seen.add(value);
+  }
+  return {data: await doc.save({updateFieldAppearances: false}), counts};
+}

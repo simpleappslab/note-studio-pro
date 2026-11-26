@@ -611,3 +611,80 @@ test('Phase 3 batches a review plan only for the exact PDF it references', async
   await expect(page.locator('#batch-queue')).toContainText('reviewed.pdf · Complete');
   await expect(page.locator('#batch-queue')).toContainText('unreviewed.pdf · Failed');
 });
+
+test('Phase 3 removes standard metadata while preserving native text and forms', async ({page}) => {
+  await navigate(page);
+  await openReady(page, await fixture());
+  await page.locator('#properties summary').click();
+  await click(page, 'read-properties');
+  await page.locator('#property-value-1').fill('Private author');
+  await page.locator('#xmp-replace').check();
+  await click(page, 'save-properties');
+  await expect(page.locator('#status')).toContainText('Document properties updated');
+  await expect(page.locator('#xmp-info')).toHaveValue(/Private author/);
+  page.once('dialog', dialog => dialog.accept());
+  const {data} = await saveDownload(page, 'metadata-copy');
+  const doc = await PDFDocument.load(data, {updateMetadata: false});
+  expect(doc.getAuthor()).toBeUndefined();
+  expect(doc.getTitle()).toBeUndefined();
+  expect(doc.catalog.get(PDFName.of('Metadata'))).toBeUndefined();
+  expect(doc.getForm().getTextField('Reviewer').getText()).toBe('AllNote');
+  const report = await saveDownload(page, 'sanitize-report');
+  expect(JSON.parse(report.data).removed.metadata).toBeGreaterThanOrEqual(2);
+});
+
+test('Phase 3 rewrites selected actions, attachments and hidden annotations without rasterizing text', async ({page}) => {
+  const doc = await PDFDocument.create();
+  const leaf = doc.addPage([400, 500]);
+  leaf.drawText('Visible source content');
+  doc.setTitle('Keep title');
+  await doc.attach(Buffer.from('PRIVATE ATTACHMENT CONTENT'), 'private.txt', {mimeType: 'text/plain'});
+  doc.addJavaScript('private-script', 'this.print();');
+  const hidden = doc.context.obj({Type:'Annot', Subtype:'Text', Rect:[30,20,44,36], F:2, Contents: require('pdf-lib').PDFHexString.fromText('hidden note')});
+  const link = doc.context.obj({Type:'Annot', Subtype:'Link', Rect:[30,42,56,56],
+    A:{S:'URI',URI:require('pdf-lib').PDFHexString.fromText('https://example.test/private')}});
+  leaf.node.set(PDFName.of('Annots'), doc.context.obj([doc.context.register(hidden),doc.context.register(link)]));
+  doc.catalog.set(PDFName.of('OpenAction'), doc.context.obj({S:'Launch', F:require('pdf-lib').PDFHexString.fromText('private')}));
+  await navigate(page);
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  await page.locator('#properties summary').click();
+  await page.locator('#sanitize-options [value="metadata"]').uncheck();
+  for (const option of ['attachments','actions','external','annotations']) {
+    await page.locator('#sanitize-options [value="' + option + '"]').check();
+  }
+  page.once('dialog', dialog => dialog.accept());
+  const {data} = await saveDownload(page, 'metadata-copy');
+  const cleaned = await PDFDocument.load(data, {updateMetadata: false});
+  expect(cleaned.getTitle()).toBe('Keep title');
+  expect(cleaned.catalog.get(PDFName.of('OpenAction'))).toBeUndefined();
+  const names = cleaned.catalog.lookup(PDFName.of('Names'));
+  expect(names.get(PDFName.of('EmbeddedFiles'))).toBeUndefined();
+  expect(names.get(PDFName.of('JavaScript'))).toBeUndefined();
+  const notes = cleaned.getPage(0).node.Annots();
+  expect(notes.size()).toBe(1);
+  expect(notes.lookup(0).get(PDFName.of('A'))).toBeUndefined();
+});
+
+test('Phase 3 requests permission before changing an existing digital signature', async ({page}) => {
+  const lib = require('pdf-lib');
+  const doc = await PDFDocument.create();
+  doc.addPage([500, 600]).drawText('Signed document');
+  const signature = doc.context.obj({
+    FT: 'Sig', T: lib.PDFHexString.fromText('Signed'),
+    V: {Type: 'Sig', ByteRange: [0, 10, 20, 10], Contents: lib.PDFHexString.of('00')}
+  });
+  doc.catalog.set(PDFName.of('AcroForm'),
+    doc.context.obj({Fields: [doc.context.register(signature)]}));
+  await navigate(page);
+  await open(page, Buffer.from(await doc.save()));
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  const warning = page.waitForEvent('dialog').then(async dialog => {
+    const message = dialog.message();
+    await dialog.dismiss();
+    return message;
+  });
+  await click(page, 'rotate');
+  expect(await warning).toContain('may invalidate the existing digital signature');
+  await expect(page.locator('#document-state')).toHaveText('');
+});

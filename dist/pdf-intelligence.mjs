@@ -49,14 +49,17 @@ export async function recognizePages(pages, language, render, signal, progress) 
         const image = await blob.arrayBuffer();
         const data = await job('recognize', {image: new Uint8Array(image), options: {},
           output: {text: true, blocks: true}}, [image]);
-        const words = (data.blocks || []).flatMap(block => block.paragraphs.flatMap(paragraph =>
-          paragraph.lines.flatMap(line => line.words.map(word => ({
-            text: word.text,
-            confidence: word.confidence,
-            box: [word.bbox.x0 / canvas.width, word.bbox.y0 / canvas.height,
-              word.bbox.x1 / canvas.width, word.bbox.y1 / canvas.height]
-          })))));
-        results.push({index, text: data.text, confidence: data.confidence, words});
+        const normalized = box => [box.x0 / canvas.width, box.y0 / canvas.height,
+          box.x1 / canvas.width, box.y1 / canvas.height];
+        const lines = (data.blocks || []).flatMap(block =>
+          block.paragraphs.flatMap(paragraph => paragraph.lines));
+        const words = lines.flatMap(line => line.words.map(word => ({
+          text: word.text, confidence: word.confidence, box: normalized(word.bbox)
+        })));
+        const rows = lines.map(line => ({
+          text: line.text.trim(), confidence: line.confidence, box: normalized(line.bbox)
+        }));
+        results.push({index, text: data.text, confidence: data.confidence, words, rows});
       } finally {
         canvas.width = canvas.height = 0;
       }

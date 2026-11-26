@@ -27,6 +27,9 @@ self.onmessage = async event => {
     case 'decrypt':
       args = [source, '--password=' + password, '--decrypt', output];
       break;
+    case 'rewrite':
+      args = [source, '--object-streams=generate', output];
+      break;
     case 'compress':
       args = [source, '--object-streams=generate', '--recompress-flate',
         '--compression-level=9', output];

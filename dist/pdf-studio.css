@@ -127,7 +127,8 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-  #pdf-app .mobile-only { display: inline-flex; }
+  #pdf-app .mobile-only { display: inline-flex; align-items: center; }
+  #pdf-app button { min-width: 44px; }
   #pdf-app :is(button, .studio-header a, select, input:not([type="checkbox"], [type="radio"]), summary) {
     min-height: 44px;
   }

@@ -75,6 +75,37 @@ async function canvasLine(page, start, end) {
   await page.mouse.up();
 }
 
+async function scannedFixture(page, text, {hindi = false, rotated = false} = {}) {
+  const image = await page.evaluate(async ({text, hindi}) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 740;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 740, 320);
+    ctx.fillStyle = '#000';
+    if (hindi) {
+      const font = new FontFace('Indic fixture', 'url(vendor/ocr/devanagari.woff)');
+      document.fonts.add(await font.load());
+    }
+    ctx.font = hindi ? '56px "Indic fixture"' : '48px sans-serif';
+    ctx.fillText(text, 45, 115);
+    ctx.fillText(text, 45, 210);
+    return canvas.toDataURL('image/png').split(',')[1];
+  }, {text, hindi});
+  const doc = await PDFDocument.create();
+  const picture = await doc.embedPng(Buffer.from(image, 'base64'));
+  if (rotated) {
+    const degrees = require('pdf-lib').degrees;
+    const leaf = doc.addPage([320, 740]);
+    leaf.setRotation(degrees(90));
+    leaf.drawImage(picture, {x: 320, y: 0, width: 740, height: 320, rotate: degrees(90)});
+  } else {
+    doc.addPage([740, 320]).drawImage(picture, {x: 0, y: 0, width: 740, height: 320});
+  }
+  return Buffer.from(await doc.save());
+}
+
 test('Notes toolbar, PDF thumbnails and drag organization preserve the document form', async ({page}) => {
   await page.goto('/');
   await expect(page.locator('.CodeMirror').first()).toBeVisible();
@@ -335,6 +366,13 @@ test('packaged Chrome extension opens from Notes and works with networking off',
     await expect(page.locator('#status')).toContainText('Reduced size by');
     const {data} = await saveDownload(page);
     expect((await PDFDocument.load(data)).getPageCount()).toBe(3);
+    await open(page, await scannedFixture(page, 'EXTENSION OCR TEST'), 'extension-scan.pdf');
+    await expect(page.locator('#position')).toHaveText('1 / 1');
+    await page.locator('#intelligence summary').click();
+    await click(page, 'ocr');
+    await expect(page.locator('#status')).toContainText('Recognized 1 scanned page(s)', {timeout: 30000});
+    const recognized = await saveDownload(page, 'ocr-txt');
+    expect(recognized.data.toString()).toContain('EXTENSION OCR TEST');
   } finally {
     await context?.close();
     rmSync(temp, {recursive: true, force: true});
@@ -533,4 +571,43 @@ test('Phase 3 batch reports malformed files and archives successful copies', asy
   const zip = unzipSync(readFileSync(await download.path()));
   const rotated = await PDFDocument.load(zip['valid-rotated.pdf']);
   expect(rotated.getPages().map(item => item.getRotation().angle)).toEqual([90, 90, 90]);
+});
+
+test('Phase 3 loads Hindi OCR for a rotated scan and restarts after cancellation', async ({page}) => {
+  await navigate(page);
+  await open(page, await scannedFixture(page, 'भारत सरकार', {hindi: true, rotated: true}), 'hindi.pdf');
+  await expect(page.locator('#position')).toHaveText('1 / 1');
+  await page.locator('#intelligence summary').click();
+  await page.locator('#ocr-language').selectOption('hin');
+  await click(page, 'ocr');
+  await page.locator('#cancel-intelligence').click();
+  await expect(page.locator('#status')).toHaveText('Processing canceled.');
+  await expect(page.locator('#pdf-app')).toHaveAttribute('aria-busy', 'false');
+  await click(page, 'ocr');
+  await expect(page.locator('#status')).toContainText('Recognized 1 scanned page(s)', {timeout: 30000});
+  expect((await saveDownload(page, 'ocr-txt')).data.toString()).toContain('भारत सरकार');
+});
+
+test('Phase 3 batches a review plan only for the exact PDF it references', async ({page}) => {
+  await navigate(page);
+  const input = await fixture();
+  await openReady(page, input);
+  await page.locator('#intelligence summary').click();
+  await page.locator('#redact-query').fill('Project overview');
+  await click(page, 'redact-search');
+  await expect(page.locator('#redaction-regions li')).toHaveCount(1);
+  page.once('dialog', dialog => dialog.accept());
+  const plan = await saveDownload(page, 'redact-review');
+  await page.locator('#open-batch').click();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#batch-add').click()]);
+  await chooser.setFiles([
+    {name:'reviewed.pdf', mimeType:'application/pdf', buffer:input},
+    {name:'unreviewed.pdf', mimeType:'application/pdf', buffer:await fixture({compressible:true})}
+  ]);
+  await page.locator('#batch-operation').selectOption('redact');
+  await page.locator('#batch-review').setInputFiles({name:plan.name, mimeType:'application/json', buffer:plan.data});
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#batch-run').click();
+  await expect(page.locator('#batch-queue')).toContainText('reviewed.pdf · Complete');
+  await expect(page.locator('#batch-queue')).toContainText('unreviewed.pdf · Failed');
 });

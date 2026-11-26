@@ -148,7 +148,7 @@ function passwordDialog(title, description, confirmPassword = false) {
 function readPdf(data, password) {
   core.validateBytes(data);
   return pdfjs.getDocument({
-    data: data.slice(), password, isEvalSupported: false, enableXfa: false,
+    data: data.slice(), password, isEvalSupported: false, enableXfa: false, verbosity: pdfjs.VerbosityLevel.ERRORS,
     disableFontFace: true, maxImageSize: 16000000, stopAtErrors: true,
     cMapUrl: asset('vendor/pdfjs/cmaps/'), cMapPacked: true,
     standardFontDataUrl: asset('vendor/pdfjs/standard_fonts/'),
@@ -370,15 +370,18 @@ async function display(state, index = page) {
   $('property-fields').replaceChildren();
   $('accessibility-info').textContent = '';
   $('xmp-info').value = '';
-  $('xmp-info').disabled = true;
+  $('xmp-replace').checked = false;
+  $('xmp-replace').disabled = true;
   sanitizationResult = null;
   $('form-data').value = '';
+  $('form-controls').replaceChildren();
   bookmarkTree = null;
   pickedBookmark = null;
   $('bookmark-list').replaceChildren();
   ocrResults = [];
   $('ocr-confidence').textContent = '';
   regions = [];
+  ignoredText.clear();
   renderRegions();
   setTool('');
   rebuildThumbnails();
@@ -983,6 +986,7 @@ async function splitPages() {
 
 let ocrResults = [];
 let regions = [];
+const ignoredText = new Set();
 let intelligenceTask = null;
 
 function selectedPages() {
@@ -1167,8 +1171,9 @@ async function scanRegions(query) {
     if (matches.length > 2000) throw Error('Too many matches. Use a narrower page range or search.');
     for (const index of matches) {
       const {text, ...row} = rows[index];
+      if (ignoredText.has(text)) continue;
       const label = query ? 'Text match' : 'Possible sensitive text';
-      regions.push({...row, selected: true, label});
+      regions.push({...row, text, selected: true, label});
     }
     renderRegions();
     drawDraft();
@@ -1194,6 +1199,19 @@ function renderRegions() {
     button.textContent = 'Page ' + region.index + ' · ' + region.label;
     button.onclick = () => void run(() => go(region.index));
     item.append(check, button);
+    if (region.text) {
+      const ignore = document.createElement('button');
+      ignore.textContent = 'Ignore text';
+      ignore.title = 'Ignore this exact text in this document until it changes';
+      ignore.onclick = () => {
+        ignoredText.add(region.text);
+        regions = regions.filter(candidate => candidate.text !== region.text);
+        renderRegions();
+        refreshControls();
+        drawDraft();
+      };
+      item.append(ignore);
+    }
     list.append(item);
   }
   $('select-regions').disabled = !regions.length;
@@ -1291,9 +1309,9 @@ async function inspectProperties() {
     (info.IsXFAPresent ? ' · XFA unsupported' : '');
   const rawXmp = metadata?.getRaw();
   const xmp = $('xmp-info');
-  xmp.disabled = Boolean(rawXmp && rawXmp.length > 8000);
-  xmp.value = xmp.defaultValue = rawXmp?.slice(0, 8000) || '';
-  if (xmp.disabled) $('accessibility-info').textContent += ' · XMP exceeds the editing limit';
+  xmp.value = rawXmp?.slice(0, 8000) || '';
+  $('xmp-replace').disabled = false;
+  if (rawXmp?.length > 8000) $('accessibility-info').textContent += ' · Showing first 8,000 XMP characters';
   propertiesLoaded = true;
   status('Document properties inspected.');
 }
@@ -1317,25 +1335,44 @@ async function saveProperties() {
     } else if (title === 'Keywords') doc[set](value ? value.split(/[,;]+/).map(word => word.trim()) : []);
     else doc[set](value);
   }
-  const xmp = $('xmp-info');
-  if (!xmp.disabled && xmp.value !== xmp.defaultValue) {
-    const value = xmp.value.trim();
-    if (value) {
-      if (value.length > 8000 || /<!DOCTYPE|<!ENTITY|<\?xml-stylesheet/i.test(value)) throw Error('Use XMP XML without DTD, entities or stylesheets.');
-      const tree = new DOMParser().parseFromString(value, 'application/xml');
-      if (tree.getElementsByTagNameNS('*', 'parsererror').length ||
-          !tree.getElementsByTagNameNS('http://www.w3.org/1999/02/22-rdf-syntax-ns#', 'RDF').length) {
-        throw Error('Enter well-formed XMP containing an RDF element.');
-      }
-      const stream = doc.context.stream(new TextEncoder().encode(value), {Type: 'Metadata', Subtype: 'XML'});
-      doc.catalog.set(lib.PDFName.of('Metadata'), doc.context.register(stream));
-    } else {
-      doc.catalog.delete(lib.PDFName.of('Metadata'));
-    }
-  }
+  if ($('xmp-replace').checked) replaceXmp(doc);
   await change(await doc.save());
   await inspectProperties();
   status('Document properties updated.');
+}
+
+function replaceXmp(doc) {
+  const xml = document.implementation.createDocument('adobe:ns:meta/', 'x:xmpmeta');
+  const rdf = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+  const dc = 'http://purl.org/dc/elements/1.1/';
+  const xmp = 'http://ns.adobe.com/xap/1.0/';
+  const pdf = 'http://ns.adobe.com/pdf/1.3/';
+  function element(parent, namespace, tag, value) {
+    const node = xml.createElementNS(namespace, tag);
+    if (value) node.textContent = value;
+    parent.appendChild(node);
+    return node;
+  }
+  const root = element(xml.documentElement, rdf, 'rdf:RDF');
+  const description = element(root, rdf, 'rdf:Description');
+  description.setAttributeNS(rdf, 'rdf:about', '');
+  for (const [tag, kind, value] of [['title','Alt',doc.getTitle()], ['description','Alt',doc.getSubject()],
+    ['creator','Seq',doc.getAuthor()]]) {
+    if (!value) continue;
+    const entry = element(description, dc, 'dc:' + tag);
+    const values = element(entry, rdf, 'rdf:' + kind);
+    const item = element(values, rdf, 'rdf:li', value);
+    if (kind === 'Alt') item.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:lang', 'x-default');
+  }
+  for (const [namespace, tag, value] of [[pdf, 'pdf:Keywords', doc.getKeywords()],
+    [pdf, 'pdf:Producer', doc.getProducer()], [xmp, 'xmp:CreatorTool', doc.getCreator()],
+    [xmp, 'xmp:CreateDate', doc.getCreationDate()?.toISOString()],
+    [xmp, 'xmp:ModifyDate', doc.getModificationDate()?.toISOString()]]) {
+    if (value) element(description, namespace, tag, value);
+  }
+  const data = new TextEncoder().encode(new XMLSerializer().serializeToString(xml));
+  const stream = doc.context.stream(data, {Type: 'Metadata', Subtype: 'XML'});
+  doc.catalog.set(lib.PDFName.of('Metadata'), doc.context.register(stream));
 }
 
 function readFormData(form) {
@@ -1345,7 +1382,51 @@ function readFormData(form) {
 async function inspectForm() {
   const form = pdfForm(lib, await engine.open(current.data));
   $('form-data').value = JSON.stringify(readFormData(form), null, 2);
+  drawFormControls(form);
   status(form.getFields().length + ' AcroForm field(s) loaded.');
+}
+
+function drawFormControls(form) {
+  const container = $('form-controls');
+  container.replaceChildren();
+  for (const field of form.getFields().slice(0, 200)) {
+    const kind = formFieldType(lib, field);
+    const label = document.createElement('label');
+    const name = field.getName();
+    const value = readField(lib, field);
+    label.textContent = name;
+    let input;
+    if (kind === 'checkbox' || kind === 'text') {
+      input = document.createElement('input');
+      input.type = kind;
+      if (kind === 'checkbox') input.checked = value;
+      else {
+        input.value = value;
+        input.maxLength = Math.min(10000, field.getMaxLength() ?? 10000);
+      }
+    } else if (['radio', 'dropdown', 'list'].includes(kind)) {
+      input = document.createElement('select');
+      input.multiple = kind !== 'radio' && field.isMultiselect();
+      if (!input.multiple) input.add(new Option('Empty', ''));
+      const selected = Array.isArray(value) ? value : [value];
+      for (const choice of field.getOptions()) input.add(new Option(choice, choice, false, selected.includes(choice)));
+    } else {
+      label.append(document.createTextNode(' · Read-only ' + kind + ' field'));
+      container.append(label);
+      continue;
+    }
+    input.disabled = field.isReadOnly();
+    input.onchange = () => {
+      try {
+        const data = parseForm($('form-data').value);
+        data[name] = kind === 'checkbox' ? input.checked :
+          input.multiple ? [...input.selectedOptions].map(option => option.value) : input.value;
+        $('form-data').value = JSON.stringify(data, null, 2);
+      } catch { status('Fix the form JSON before changing field values.'); }
+    };
+    label.append(input);
+    container.append(label);
+  }
 }
 
 function parseForm(value) {
@@ -1362,7 +1443,11 @@ async function applyForm(data) {
   const fields = new Map(form.getFields().map(field => [field.getName(), field]));
   for (const [name, value] of Object.entries(data)) {
     const field = fields.get(name);
-    if (!field || field.isReadOnly() && value !== null) throw Error('Form data refers to an unknown or read-only field.');
+    if (!field) throw Error('Form data refers to an unknown field.');
+    if (field.isReadOnly()) {
+      if (JSON.stringify(value) !== JSON.stringify(readField(lib, field))) throw Error('A read-only field was changed.');
+      continue;
+    }
     setField(lib, field, value);
   }
   await change(await doc.save());

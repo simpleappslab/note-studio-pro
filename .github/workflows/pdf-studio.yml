@@ -56,3 +56,25 @@ jobs:
         with:
           name: allnote-browser-report
           path: playwright-report/
+  browser-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [webkit, msedge]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx --no-install playwright install --with-deps "$ALLNOTE_TEST_ENGINE"
+        env:
+          ALLNOTE_TEST_ENGINE: ${{ matrix.browser }}
+      - run: npm run test:browser -- pdf-compat.spec.cjs
+        env:
+          ALLNOTE_TEST_ENGINE: ${{ matrix.browser }}

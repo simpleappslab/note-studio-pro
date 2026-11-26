@@ -1,5 +1,6 @@
 const {defineConfig} = require('@playwright/test');
 const executablePath = process.env.ALLNOTE_CHROMIUM;
+const engine = process.env.ALLNOTE_TEST_ENGINE;
 
 module.exports = defineConfig({
   testDir: './scripts/browser',
@@ -7,6 +8,8 @@ module.exports = defineConfig({
   workers: 2,
   reporter: process.env.CI ? [['list'], ['html', {open: 'never'}]] : 'list',
   use: {
+    browserName: engine === 'webkit' ? 'webkit' : 'chromium',
+    channel: engine === 'msedge' ? 'msedge' : undefined,
     baseURL: 'http://127.0.0.1:4173',
     viewport: {width: 1440, height: 1000},
     launchOptions: {executablePath},

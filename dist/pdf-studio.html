@@ -180,7 +180,8 @@
         <div id="property-fields"></div>
         <button data-op="save-properties">Apply properties</button>
         <p id="accessibility-info"></p>
-        <label>XMP metadata <textarea id="xmp-info" rows="3" maxlength="8000"></textarea></label>
+        <label>Source XMP <textarea id="xmp-info" rows="3" readonly></textarea></label>
+        <label><input id="xmp-replace" type="checkbox"> Replace XMP with the document properties</label>
         <button data-op="sanitize-report">Download sanitization report</button>
       </details>
       <details id="existing-text">
@@ -211,6 +212,7 @@
           <button data-op="export-form">Export JSON</button><button data-op="import-form">Import JSON</button>
           <button data-op="flatten-form">Flatten form</button><button data-op="reset-form">Reset inputs</button>
         </div>
+        <div id="form-controls"></div>
         <label>Form data <textarea id="form-data" rows="5" maxlength="200000"></textarea></label>
         <label>New field name <input id="field-name" maxlength="100"></label>
         <label>Field type <select id="field-kind">

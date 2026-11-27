@@ -42,7 +42,7 @@ export async function recognizePages(pages, language, render, signal, progress) 
     const options = {langPath: new URL('languages', base).href, cacheMethod: 'none', gzip: true, lstmOnly: true};
     if (native) {
       const models = await Promise.all(langs.map(async code => {
-        const response = await fetch(new URL('languages/' + code + '.traineddata.gz', base), {signal});
+        const response = await fetch(new URL('languages/' + code + '.traineddata.bin', base), {signal});
         if (!response.ok) throw Error('Could not load a bundled OCR language.');
         return {code, data: new Uint8Array(await response.arrayBuffer())};
       }));

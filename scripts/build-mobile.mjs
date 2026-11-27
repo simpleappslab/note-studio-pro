@@ -1,4 +1,4 @@
-import {cpSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {cpSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 
 const target = 'mobile-build';
 rmSync(target, {recursive: true, force: true});
@@ -29,3 +29,10 @@ const worker = ocr + 'worker.min.js';
 writeFileSync(ocr + 'native-ocr-worker.js', readFileSync(core, 'utf8') + '\n' + readFileSync(worker, 'utf8'));
 rmSync(core);
 rmSync(worker);
+
+// Android's asset packager treats a .gz suffix specially. Preserve the gzip
+// bytes under a regular binary filename; Tesseract detects the gzip signature.
+for (const language of ['eng', 'hin']) {
+  const model = ocr + 'languages/' + language + '.traineddata';
+  renameSync(model + '.gz', model + '.bin');
+}

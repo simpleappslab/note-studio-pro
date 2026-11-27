@@ -101,3 +101,7 @@ For a local web preview after checkout, run `npm ci`, `npm run build:pwa`, and `
 ### Phase 3 preview
 
 See [Phase 3 workflows, dependency notices, tests and limits](PDF-STUDIO-PHASE3.md) for OCR, raster redaction, editing, comparison and batch processing.
+
+### Installed mobile apps
+
+See [Android and iOS builds](MOBILE.md) for the bundled offline editor, native file selection, system sharing, and build instructions.

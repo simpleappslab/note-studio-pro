@@ -3,7 +3,8 @@ const MAX_PIXELS = 12_000_000;
 
 export async function recognizePages(pages, language, render, signal, progress) {
   if (!['eng', 'hin', 'eng+hin'].includes(language)) throw Error('Unsupported OCR language.');
-  const worker = new Worker(new URL('worker.min.js', base));
+  const native = Boolean(globalThis.AllNoteNativeFiles);
+  const worker = new Worker(new URL(native ? 'native-ocr-worker.js' : 'worker.min.js', base));
   const langs = language.split('+');
   let jobId = 0;
   function job(action, payload, transfer = []) {
@@ -26,7 +27,11 @@ export async function recognizePages(pages, language, render, signal, progress) 
       worker.onmessage = ({data}) => {
         if (data.jobId !== id || data.status === 'progress') return;
         if (data.status === 'resolve') finish(resolve, data.data);
-        else finish(reject, Error('The local OCR operation failed.'));
+        else {
+          const stage = {load: 'starting the engine', loadLanguage: 'loading language data',
+            initialize: 'preparing recognition', recognize: 'recognizing the image'}[action];
+          finish(reject, Error('Local OCR failed while ' + stage + '.'));
+        }
       };
       worker.postMessage({workerId: 'allnote-ocr', jobId: id, action, payload}, transfer);
     });
@@ -34,8 +39,8 @@ export async function recognizePages(pages, language, render, signal, progress) 
   try {
     // This protocol is provided by the pinned Tesseract.js browser worker.
     await job('load', {options: {lstmOnly: true, corePath: new URL('tesseract-core-lstm.wasm.js', base).href}});
-    await job('loadLanguage', {langs, options: {langPath: new URL('languages', base).href,
-      cacheMethod: 'none', gzip: true, lstmOnly: true}});
+    const options = {langPath: new URL('languages', base).href, cacheMethod: 'none', gzip: true, lstmOnly: true};
+    await job('loadLanguage', {langs, options});
     await job('initialize', {langs, oem: 1, config: {}});
     const results = [];
     for (const index of pages) {

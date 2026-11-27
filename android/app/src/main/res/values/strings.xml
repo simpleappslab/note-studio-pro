@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AllNote PDF Studio</string>
+    <string name="title_activity_main">AllNote PDF Studio</string>
+    <string name="package_name">com.simpleappslab.allnotepdf</string>
+    <string name="custom_url_scheme">com.simpleappslab.allnotepdf</string>
+</resources>

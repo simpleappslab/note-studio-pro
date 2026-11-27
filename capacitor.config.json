@@ -1,0 +1,18 @@
+{
+  "appId": "com.simpleappslab.allnotepdf",
+  "appName": "AllNote PDF Studio",
+  "webDir": "mobile-build",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "appStartPath": "/pdf-studio.html"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never"
+  },
+  "loggingBehavior": "none"
+}

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self'; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <title>AllNote PDF Studio</title>
   <link rel="icon" href="assets/icon48.png">
@@ -20,9 +20,10 @@
     <a href="index.html">← Notes</a>
     <h1>PDF Studio</h1>
     <span class="local-label">On-device workspace</span>
+    <button class="mobile-only" id="mobile-more" aria-controls="studio-toolbar" aria-expanded="false">Actions</button>
     <button id="theme" aria-pressed="false">Dark mode</button>
   </header>
-  <nav class="studio-toolbar" aria-label="PDF tools">
+  <nav id="studio-toolbar" class="studio-toolbar" aria-label="PDF tools">
     <div role="group" aria-label="Files">
       <button id="open" class="primary">Open PDF</button>
       <button id="merge">Merge</button>
@@ -41,8 +42,8 @@
     </div>
   </nav>
   <div class="pdf-body">
-    <aside id="page-sidebar" aria-labelledby="pages-heading">
-      <h2 id="pages-heading">Pages</h2><button id="toggle-pages" aria-expanded="true">Hide pages</button>
+    <aside id="page-sidebar" tabindex="-1" aria-labelledby="pages-heading">
+      <h2 id="pages-heading">Pages</h2><button id="toggle-pages" aria-controls="pages" aria-expanded="true">Hide pages</button>
       <div class="page-order" role="group" aria-label="Move selected page">
         <button data-op="move-up" aria-label="Move page earlier">↑</button>
         <button data-op="move-down" aria-label="Move page later">↓</button>
@@ -57,14 +58,19 @@
         <button id="next" aria-label="Next page">›</button>
         <label class="sr-only" for="zoom">Zoom</label>
         <select id="zoom">
-          <option value=".5">50%</option><option value=".75">75%</option>
+          <option value="fit">Fit width</option><option value=".5">50%</option><option value=".75">75%</option>
           <option value="1" selected>100%</option><option value="1.5">150%</option><option value="2">200%</option>
         </select>
         <label class="sr-only" for="search">Find text</label>
         <input id="search" type="search" placeholder="Find text" maxlength="200">
         <button id="find">Find next</button>
+        <button class="mobile-only" id="mobile-pages" aria-controls="page-sidebar" aria-expanded="false">Pages</button>
+        <button class="mobile-only" id="mobile-tools" aria-controls="document-tools" aria-expanded="false">Tools</button>
       </div>
-      <div id="paper">
+      <div class="mobile-only" id="mobile-tool-hint" hidden>
+        <span id="mobile-tool-text"></span><button id="mobile-exit-tool">Exit tool</button>
+      </div>
+      <div id="paper" tabindex="0" aria-label="Scrollable PDF page">
         <div id="empty">
           <h2>Open a PDF to begin</h2>
           <p>Choose a file or drop it here.</p>
@@ -76,7 +82,7 @@
       </div>
     </section>
 
-    <aside class="pdf-options" aria-label="Document tools">
+    <aside id="document-tools" tabindex="-1" class="pdf-options" aria-label="Document tools">
       <details open>
         <summary>Markup</summary>
         <div class="tool-grid" role="group" aria-label="Place on page">

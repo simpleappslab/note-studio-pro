@@ -15,6 +15,9 @@ const lib = globalThis.PDFLib;
 const engine = core.engine(lib);
 const controls = [...document.querySelectorAll('[data-op], [data-tool], #prev, #next, #find, #zoom')];
 const markup = $('markup');
+const compactScreen = matchMedia('(max-width: 900px)');
+const studio = $('pdf-app');
+if (compactScreen.matches) $('zoom').value = 'fit';
 const pdfType = { description: 'PDF document', accept: {'application/pdf': ['.pdf']} };
 const status = message => { $('status').textContent = message; };
 
@@ -215,7 +218,10 @@ function download(data, name, type = 'application/pdf') {
   const link = document.createElement('a');
   link.href = url;
   link.download = name;
+  link.hidden = true;
+  document.body.append(link);
   link.click();
+  link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
@@ -237,7 +243,7 @@ async function paint(pdfPage, view, canvas) {
 async function viewPage(pdf, index) {
   const pdfPage = await pdf.getPage(index);
   const unit = pdfPage.getViewport({scale: 1});
-  const scale = Math.min(Number($('zoom').value), 8100 / unit.width, 8100 / unit.height,
+  const scale = Math.min($('zoom').value === 'fit' ? 1 : Number($('zoom').value), 8100 / unit.width, 8100 / unit.height,
     Math.sqrt(15500000 / (unit.width * unit.height)));
   const preview = document.createElement('canvas');
   const view = pdfPage.getViewport({scale});
@@ -258,6 +264,7 @@ function showPage(index, {preview, view, pdfPage}) {
   $('position').textContent = page + ' / ' + viewer.numPages;
   drawDraft();
   $('empty').hidden = true;
+  $('page-surface').toggleAttribute('data-fit', $('zoom').value === 'fit');
   $('page-surface').hidden = false;
   $('pages').querySelector('[aria-current]')?.removeAttribute('aria-current');
   $('pages').children[page - 1]?.firstElementChild.setAttribute('aria-current', 'page');
@@ -309,7 +316,10 @@ function rebuildThumbnails() {
     label.textContent = 'Page ' + index;
     button.type = 'button';
     button.draggable = true;
-    button.onclick = () => void run(() => go(index));
+    button.onclick = () => void run(async () => {
+      await go(index);
+      if (compactScreen.matches) setMobilePanel(null, 'pages');
+    });
     button.ondragstart = event => {
       if (busy) return event.preventDefault();
       dragging = index;
@@ -698,6 +708,10 @@ function setTool(next) {
   $('signature-actions').hidden = tool !== 'signature';
   $('finish-signature').disabled = true;
   $('tool-help').textContent = toolHelp[tool] || 'Choose a tool, then place or draw on the page.';
+  $('mobile-tool-hint').hidden = !tool;
+  $('mobile-tool-text').textContent = tool === 'signature'
+    ? 'Draw on the PDF, then open Tools to place the signature.' : toolHelp[tool] || '';
+  if (tool && compactScreen.matches && studio.dataset.panel === 'tools') setMobilePanel(null, 'tools');
 }
 
 for (const button of document.querySelectorAll('[data-tool]')) {
@@ -1724,6 +1738,9 @@ let comparisonImages = null;
 
 function workspace(which) {
   workspaceView.hidden = Boolean(which);
+  $('mobile-more').hidden = Boolean(which);
+  setMobilePanel(null);
+  setMobileActions(false);
   $('compare-workspace').hidden = which !== 'compare';
   $('batch-workspace').hidden = which !== 'batch';
   document.querySelector('.studio-toolbar').hidden = Boolean(which);
@@ -1780,6 +1797,7 @@ async function showComparison() {
   const pair = comparison.pairs[comparisonIndex];
   const before = pair.left?.index;
   const after = pair.right?.index;
+  $('compare-pages').toggleAttribute('data-fit', $('compare-zoom').value === '1');
   const size = Math.round(600 * Number($('compare-zoom').value));
   comparisonImages = [
     await renderComparison(viewer, before, size, pdfjs),
@@ -2133,11 +2151,51 @@ window.addEventListener('beforeunload', event => {
   }
 });
 window.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !$('password-dialog').open) setTool('');
+  if (event.key !== 'Escape' || $('password-dialog').open) return;
+  const panel = studio.dataset.panel;
+  if (panel) setMobilePanel(null, panel);
+  else if (studio.hasAttribute('data-actions')) setMobileActions(false, true);
+  else setTool('');
 });
 $("toggle-pages").onclick = () => {
   const collapsed = $("page-sidebar").toggleAttribute("data-collapsed");
   $("toggle-pages").setAttribute("aria-expanded", String(!collapsed));
   $("toggle-pages").textContent = collapsed ? "Show pages" : "Hide pages";
 };
+function setMobileActions(open, restoreFocus = false) {
+  studio.toggleAttribute('data-actions', open);
+  $('mobile-more').setAttribute('aria-expanded', String(open));
+  if (restoreFocus) $('mobile-more').focus();
+}
+
+function setMobilePanel(panel, restoreFocus) {
+  if (panel) {
+    studio.dataset.panel = panel;
+    setMobileActions(false);
+  } else delete studio.dataset.panel;
+  for (const name of ['pages', 'tools']) {
+    $('mobile-' + name).setAttribute('aria-expanded', String(panel === name));
+  }
+  if (panel === 'pages') $('page-sidebar').focus({preventScroll: true});
+  if (panel === 'tools') $('document-tools').focus({preventScroll: true});
+  if (restoreFocus) $('mobile-' + restoreFocus).focus({preventScroll: true});
+}
+
+$('mobile-more').onclick = () => {
+  setMobilePanel(null);
+  setMobileActions(!studio.hasAttribute('data-actions'));
+};
+for (const name of ['pages', 'tools']) {
+  $('mobile-' + name).onclick = () => setMobilePanel(studio.dataset.panel === name ? null : name);
+}
+$('mobile-exit-tool').onclick = () => {
+  setTool('');
+  $('mobile-tools').focus();
+};
+compactScreen.addEventListener('change', () => {
+  if (!compactScreen.matches) {
+    setMobilePanel(null);
+    setMobileActions(false);
+  }
+});
 refreshControls();

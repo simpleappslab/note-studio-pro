@@ -1,4 +1,4 @@
-import {cpSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {cpSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 
 const target = 'mobile-build';
 rmSync(target, {recursive: true, force: true});
@@ -25,14 +25,16 @@ cpSync('mobile/native-files.js', target + '/native-files.js');
 const ocr = target + '/vendor/ocr/';
 const core = ocr + 'tesseract-core-lstm.wasm.js';
 const worker = ocr + 'worker.min.js';
-// Native WebViews can load the entry worker while failing nested importScripts requests.
-writeFileSync(ocr + 'native-ocr-worker.js', readFileSync(core, 'utf8') + '\n' + readFileSync(worker, 'utf8'));
+const languages = ['eng', 'hin'];
+const models = Object.fromEntries(languages.map(code => [
+  code, readFileSync(ocr + 'languages/' + code + '.traineddata.gz').toString('base64')
+]));
+// Load the engine and local models with the entry script. Some native WebViews
+// fail to serve additional resources requested from inside the OCR worker.
+const modelsScript = readFileSync('mobile/ocr-models.js', 'utf8').replace('"__OCR_MODELS__"', JSON.stringify(models));
+writeFileSync(ocr + 'native-ocr-worker.js', [
+  modelsScript, readFileSync(core, 'utf8'), readFileSync(worker, 'utf8')
+].join('\n'));
 rmSync(core);
 rmSync(worker);
-
-// Android's asset packager treats a .gz suffix specially. Preserve the gzip
-// bytes under a regular binary filename; Tesseract detects the gzip signature.
-for (const language of ['eng', 'hin']) {
-  const model = ocr + 'languages/' + language + '.traineddata';
-  renameSync(model + '.gz', model + '.bin');
-}
+rmSync(ocr + 'languages', {recursive: true});

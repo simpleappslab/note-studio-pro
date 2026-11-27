@@ -40,14 +40,7 @@ export async function recognizePages(pages, language, render, signal, progress) 
     // This protocol is provided by the pinned Tesseract.js browser worker.
     await job('load', {options: {lstmOnly: true, corePath: new URL('tesseract-core-lstm.wasm.js', base).href}});
     const options = {langPath: new URL('languages', base).href, cacheMethod: 'none', gzip: true, lstmOnly: true};
-    if (native) {
-      const models = await Promise.all(langs.map(async code => {
-        const response = await fetch(new URL('languages/' + code + '.traineddata.bin', base), {signal});
-        if (!response.ok) throw Error('Could not load a bundled OCR language.');
-        return {code, data: new Uint8Array(await response.arrayBuffer())};
-      }));
-      await job('loadLanguage', {langs: models, options}, models.map(model => model.data.buffer));
-    } else await job('loadLanguage', {langs, options});
+    await job('loadLanguage', {langs, options});
     await job('initialize', {langs, oem: 1, config: {}});
     const results = [];
     for (const index of pages) {

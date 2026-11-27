@@ -3,7 +3,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const {randomUUID} = require('node:crypto');
+const {getRandomValues} = require('node:crypto');
 const source = fs.readFileSync('mobile/native-files.js', 'utf8');
 
 function setup(fail = false) {
@@ -28,7 +28,7 @@ function setup(fail = false) {
     }
   };
   const sandbox = {Capacitor: {isNativePlatform: () => true, Plugins: {Filesystem: filesystem, Share: share}},
-    crypto: {randomUUID}, Blob, btoa, Uint8Array};
+    crypto: {getRandomValues}, Blob, btoa, Uint8Array};
   vm.runInNewContext(source, sandbox);
   return {api: sandbox.AllNoteNativeFiles, chunks, removed, shares};
 }

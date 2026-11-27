@@ -58,7 +58,9 @@
       throw Error('Share up to 20 files totaling 100 MiB or less.');
     }
     sharing = true;
-    const folder = root + '/' + Date.now() + '-' + crypto.randomUUID();
+    const entropy = crypto.getRandomValues(new Uint8Array(16));
+    const id = Array.from(entropy, byte => byte.toString(16).padStart(2, '0')).join('');
+    const folder = root + '/' + Date.now() + '-' + id;
     try {
       await clearExpired();
       const uris = [];

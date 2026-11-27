@@ -1,6 +1,7 @@
 /* Note Studio Pro — all document processing stays in the browser. */
 (() => {
   'use strict';
+  const nativeFiles = globalThis.AllNoteNativeFiles;
   const $ = (id) => document.getElementById(id);
   const icon = (name, cls = '') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -223,7 +224,7 @@
     f.linked = false;
   }
   async function chooseFiles() {
-    if (!window.showOpenFilePicker) return $('file-input').click();
+    if (nativeFiles || !window.showOpenFilePicker) return $('file-input').click();
     try {
       const handles = await window.showOpenFilePicker({multiple:true});
       for (const handle of handles) await openFiles([await handle.getFile()], [handle]);
@@ -240,7 +241,16 @@
     }
     if(opened)notify(`${opened} ${opened===1?'file':'files'} opened. Drafts stay in this browser.`);$('file-input').value='';
   }
-  function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';(document.querySelector('dialog[open]')||document.body).append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+  function downloadBlob(blob,name){
+    if (nativeFiles) {
+      void nativeFiles.shareFiles([{data:blob,name,type:blob.type}])
+        .catch(error => notify(error.message,true));
+      return;
+    }
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;
+    a.style.display='none';(document.querySelector('dialog[open]')||document.body).append(a);
+    a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }
   async function copyText(text,container=document.body){
     if(navigator.clipboard?.writeText)try{await navigator.clipboard.writeText(text);return;}catch{}
     // Fallback for browsers that restrict the Clipboard API. Keep focus and selection intact.

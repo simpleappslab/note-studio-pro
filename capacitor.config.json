@@ -6,7 +6,7 @@
     "hostname": "localhost",
     "androidScheme": "https",
     "iosScheme": "capacitor",
-    "appStartPath": "pdf-studio.html"
+    "appStartPath": "/pdf-studio.html"
   },
   "android": {
     "allowMixedContent": false

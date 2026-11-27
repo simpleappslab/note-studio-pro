@@ -57,3 +57,10 @@ test('native bridge stays absent in a browser', () => {
   vm.runInNewContext(source, sandbox);
   assert.equal(sandbox.AllNoteNativeFiles, undefined);
 });
+
+test('native start path resolves against the bundled localhost origin', () => {
+  const {server} = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+  assert.equal(server.url, undefined);
+  assert.equal(server.androidScheme + '://' + server.hostname + server.appStartPath,
+    'https://localhost/pdf-studio.html');
+});

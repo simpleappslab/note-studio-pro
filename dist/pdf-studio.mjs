@@ -16,6 +16,7 @@ const engine = core.engine(lib);
 const controls = [...document.querySelectorAll('[data-op], [data-tool], #prev, #next, #find, #zoom')];
 const markup = $('markup');
 const compactScreen = matchMedia('(max-width: 900px)');
+const nativeFiles = globalThis.AllNoteNativeFiles;
 const studio = $('pdf-app');
 if (compactScreen.matches) $('zoom').value = 'fit';
 const pdfType = { description: 'PDF document', accept: {'application/pdf': ['.pdf']} };
@@ -213,7 +214,8 @@ async function fileBytes(file) {
   return new Uint8Array(await file.arrayBuffer());
 }
 
-function download(data, name, type = 'application/pdf') {
+async function download(data, name, type = 'application/pdf') {
+  if (nativeFiles) return nativeFiles.shareFiles([{data, name, type}]);
   const url = URL.createObjectURL(new Blob([data], {type}));
   const link = document.createElement('a');
   link.href = url;
@@ -474,7 +476,7 @@ function chooseFiles(mode) {
 
 $('open').onclick = () => void run(async () => {
   if (!confirmReplacement()) return;
-  if (!window.showOpenFilePicker) {
+  if (nativeFiles || !window.showOpenFilePicker) {
     chooseFiles('open');
     return;
   }
@@ -548,7 +550,7 @@ async function saveFile(saveAs) {
   let handle = original?.handle;
   if (saveAs) {
     handle = null;
-    if (window.showSaveFilePicker) {
+    if (!nativeFiles && window.showSaveFilePicker) {
       try {
         handle = await window.showSaveFilePicker({suggestedName: filename, types: [pdfType]});
       } catch (error) {
@@ -561,9 +563,9 @@ async function saveFile(saveAs) {
 
   const data = await exportBytes();
   if (!handle) {
-    download(data, filename);
+    await download(data, filename);
     saved = current;
-    status('Download requested for ' + filename + '.');
+    status(nativeFiles ? 'Export handed to the system share sheet.' : 'Download requested for ' + filename + '.');
     return;
   }
 
@@ -979,7 +981,7 @@ async function exportPage(extension) {
   await paint(pdfPage, pdfPage.getViewport({scale: 1.5}), canvas);
   pdfPage.cleanup();
   const type = extension === 'png' ? 'image/png' : 'image/jpeg';
-  download(await canvasBlob(canvas, type, .9), stem() + '-' + page + '.' + extension, type);
+  await download(await canvasBlob(canvas, type, .9), stem() + '-' + page + '.' + extension, type);
   status('Image download requested.');
 }
 
@@ -987,7 +989,7 @@ async function exportText() {
   if (current.password && !confirm('Export the text to an unprotected file?')) return;
   const chunks = [];
   for (let index = 1; index <= viewer.numPages; index++) chunks.push(await pageText(index));
-  download(chunks.join('\n\n'), stem() + '.txt', 'text/plain;charset=utf-8');
+  await download(chunks.join('\n\n'), stem() + '.txt', 'text/plain;charset=utf-8');
   status('Text download requested.');
 }
 
@@ -999,7 +1001,9 @@ async function splitPages() {
     const part = await engine.extract(current.data, String(index + 1));
     parts.push(await exportBytes(part));
   }
-  for (const [i, part] of parts.entries()) download(part, stem() + '-page-' + (indices[i] + 1) + '.pdf');
+  const files = parts.map((data, i) => ({data, name: stem() + '-page-' + (indices[i] + 1) + '.pdf'}));
+  if (nativeFiles) await nativeFiles.shareFiles(files);
+  else for (const {data, name} of files) await download(data, name);
   status('Split downloads requested.');
 }
 
@@ -1276,7 +1280,7 @@ async function exportReview() {
   if (!confirm('Export the reviewed regions? The plan contains positions and a document fingerprint.')) return;
   const review = parseReview({version: 1, pages: viewer.numPages, sha256: await fingerprint(current.data),
     color: $('redaction-color').value, regions: selected});
-  download(JSON.stringify(review, null, 2), stem() + '-redaction-plan.json', 'application/json');
+  await download(JSON.stringify(review, null, 2), stem() + '-redaction-plan.json', 'application/json');
 }
 
 async function exportRaster(redacting) {
@@ -1287,7 +1291,7 @@ async function exportRaster(redacting) {
     const data = await rasterRedact(lib, viewer.numPages, index => renderPixels(index, 2, viewer, signal), selected,
       $('redaction-color').value, signal, index => status('Reconstructing page ' + index + '…'), core.MAX_BYTES);
     signal.throwIfAborted();
-    download(await exportBytes(data), stem() + (redacting ? '-redacted.pdf' : '-pixels.pdf'));
+    await download(await exportBytes(data), stem() + (redacting ? '-redacted.pdf' : '-pixels.pdf'));
     sanitizationResult = {mode: 'pixel reconstruction', pages: viewer.numPages, selectedRegions: selected.length,
       discarded: ['Source metadata and XMP', 'Text and OCR layers', 'Attachments', 'Annotations',
         'AcroForm and XFA objects', 'Document JavaScript and actions', 'Link objects', 'Prior revisions', 'Bookmarks'],
@@ -1309,7 +1313,7 @@ async function exportMetadataRemoved() {
   await intelligenceOperation(async signal => {
     const result = await scrubPdf(lib, engine, current.data, selections, signal);
     const bytes = await transformPdf(result.data, 'rewrite', '', signal);
-    download(await exportBytes(bytes), stem() + '-sanitized.pdf');
+    await download(await exportBytes(bytes), stem() + '-sanitized.pdf');
     sanitizationResult = {mode: 'selected standard structures', removed: result.counts,
       remaining: ['Unselected structures and proprietary keys can remain.',
         'Page pixels and content are retained. Use pixel reconstruction for permanent redaction.',
@@ -1493,7 +1497,7 @@ async function applyForm(data) {
 async function exportForm() {
   if (current.password && !confirm('Download the form fields as unprotected JSON?')) return;
   const data = readFormData(pdfForm(lib, await engine.open(current.data)));
-  download(JSON.stringify(data, null, 2), stem() + '-form.json', 'application/json');
+  await download(JSON.stringify(data, null, 2), stem() + '-form.json', 'application/json');
 }
 
 $('form-json-file').onchange = () => {
@@ -1874,10 +1878,10 @@ $('compare-audit').onclick = () => void run(async () => {
   }
   status('Visual audit complete.');
 });
-$('compare-report').onclick = () => {
+$('compare-report').onclick = () => void run(async () => {
   if (comparison.protected && !confirm('Export an unprotected structural comparison report?')) return;
-  download(JSON.stringify(comparison.report, null, 2), stem() + '-comparison.json', 'application/json');
-};
+  await download(JSON.stringify(comparison.report, null, 2), stem() + '-comparison.json', 'application/json');
+});
 
 let batch = [];
 let batchController = null;
@@ -1919,7 +1923,7 @@ function drawBatch() {
     if (item.result) {
       const button = document.createElement('button');
       button.textContent = 'Download';
-      button.onclick = () => download(item.result.bytes, item.result.name, item.result.type);
+      button.onclick = () => void run(() => download(item.result.bytes, item.result.name, item.result.type));
       row.append(button);
     }
     list.append(row);
@@ -1941,9 +1945,9 @@ $('batch-operation').onchange = () => {
   $('batch-language-label').hidden = op !== 'ocr';
   $('batch-review-label').hidden = op !== 'redact';
 };
-$('batch-zip').onclick = () => {
+$('batch-zip').onclick = async () => {
   try {
-    download(archive(batch.flatMap(item => item.result ? [item.result] : [])), 'allnote-batch.zip', 'application/zip');
+    await download(archive(batch.flatMap(item => item.result ? [item.result] : [])), 'allnote-batch.zip', 'application/zip');
   } catch (error) { status(error.message); }
 };
 
@@ -2088,7 +2092,7 @@ const operations = {
   remove: async () => { await change(await engine.remove(current.data, $('range').value)); status('Selected pages deleted.'); },
   extract: async () => {
     const data = await engine.extract(current.data, $('range').value);
-    download(await exportBytes(data), stem() + '-extracted.pdf');
+    await download(await exportBytes(data), stem() + '-extracted.pdf');
     status('Extracted PDF download requested.');
   },
   split: splitPages,

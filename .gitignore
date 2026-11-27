@@ -6,3 +6,6 @@ release/
 __pycache__/
 test-results/
 playwright-report/
+
+/mobile-build/
+/android/.idea/

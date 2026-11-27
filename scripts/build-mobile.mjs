@@ -21,3 +21,11 @@ const html = readFileSync(studio, 'utf8');
 if (!html.includes(entry)) throw Error('PDF Studio entry script not found.');
 writeFileSync(studio, html.replace(entry, bridge + entry));
 cpSync('mobile/native-files.js', target + '/native-files.js');
+
+const ocr = target + '/vendor/ocr/';
+const core = ocr + 'tesseract-core-lstm.wasm.js';
+const worker = ocr + 'worker.min.js';
+// Native WebViews can load the entry worker while failing nested importScripts requests.
+writeFileSync(ocr + 'native-ocr-worker.js', readFileSync(core, 'utf8') + '\n' + readFileSync(worker, 'utf8'));
+rmSync(core);
+rmSync(worker);

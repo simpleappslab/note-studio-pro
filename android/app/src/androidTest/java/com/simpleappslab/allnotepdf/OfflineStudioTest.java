@@ -3,8 +3,6 @@ package com.simpleappslab.allnotepdf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import org.junit.Test;
@@ -29,14 +27,18 @@ public class OfflineStudioTest {
             value = evaluate(screen, "Boolean(" + condition + ")");
             if (!value.equals("true")) Thread.sleep(250);
         }
-        assertEquals(description, "true", value);
+        String diagnostic = value.equals("true") ? "" : evaluate(screen, """
+            JSON.stringify({url:location.href, title:document.title,
+              studio:document.querySelector('#pdf-app')?.getAttribute('aria-busy'),
+              bridge:typeof window.Capacitor, exportBridge:typeof window.AllNoteNativeFiles,
+              status:document.querySelector('#status')?.textContent})
+            """);
+        assertEquals(description + " " + diagnostic, "true", value);
     }
 
     @Test
-    public void opensAndRecognizesAPdfWithoutInternetPermission() throws InterruptedException {
+    public void opensAndRecognizesAPdfWithNetworkDisabled() throws InterruptedException {
         try (ActivityScenario<MainActivity> screen = ActivityScenario.launch(MainActivity.class)) {
-            screen.onActivity(activity -> assertEquals(PackageManager.PERMISSION_DENIED,
-                activity.checkSelfPermission(Manifest.permission.INTERNET)));
             await(screen, "window.AllNoteNativeFiles && document.querySelector('#pdf-app[aria-busy=false]')",
                 "The bundled editor and native file bridge should load");
             evaluate(screen, """

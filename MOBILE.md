@@ -2,7 +2,7 @@
 
 The Android and iOS targets bundle the same local PDF editor, PDF engines and English/Hindi OCR assets as the web app. The installed app launches directly into PDF Studio. Use **Open PDF** to select a file through the operating system and **Save As** to send a copy to the system share sheet. On iOS, use **Save to Files** from that sheet. Android destinations depend on the apps installed on the device.
 
-The app writes exported copies to a private, non-backup cache before opening the share sheet. It removes failed exports and prunes successful export copies older than one hour on launch or during another export. Recipients chosen in the share sheet can retain their own copies. The Android manifest removes the internet permission. The native app uses packaged assets and leaves PWA installation and updates to the web build.
+The app writes exported copies to a private, non-backup cache before opening the share sheet. It removes failed exports and prunes successful export copies older than one hour on launch or during another export. Recipients chosen in the share sheet can retain their own copies. Android WebView needs network permission to serve the bundled HTTPS localhost origin. Its native request handler allows that origin and rejects external WebView requests. The emulator test disables network connectivity before opening the app. The native app uses packaged assets and leaves PWA installation and updates to the web build.
 
 ## Builds
 

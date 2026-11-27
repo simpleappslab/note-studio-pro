@@ -53,7 +53,11 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: cd android && ./gradlew connectedDebugAndroidTest --no-daemon
+          script: |
+            adb shell cmd connectivity airplane-mode enable
+            adb shell svc wifi disable
+            adb shell svc data disable
+            cd android && ./gradlew connectedDebugAndroidTest --no-daemon
 
   ios:
     runs-on: macos-15
